@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ShoppingBag,
@@ -22,7 +23,9 @@ import {
 } from "lucide-react";
 
 export default function Home() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -32,6 +35,20 @@ export default function Home() {
       } catch (e) {}
     }
   }, []);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (_) {
+      // best-effort – still clear client state
+    } finally {
+      localStorage.removeItem("user");
+      setUser(null);
+      setIsLoggingOut(false);
+      router.push("/login");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
@@ -65,14 +82,11 @@ export default function Home() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      localStorage.removeItem("user");
-                      setUser(null);
-                      // Additionally hit logout API if you implement cookie dropping
-                    }}
-                    className="rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Logout
+                    {isLoggingOut ? "Signing out…" : "Logout"}
                   </motion.button>
                 </>
               ) : (

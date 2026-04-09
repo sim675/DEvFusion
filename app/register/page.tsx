@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { ShoppingBag, Store, ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
@@ -18,12 +18,12 @@ const SELLER_PERKS = [
   "Real-time analytics",
 ];
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 32 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.15, duration: 0.5, ease: "easeOut" },
+    transition: { delay: i * 0.15, duration: 0.5, ease: "easeOut" as const },
   }),
 };
 

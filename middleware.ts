@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
 
   // Define which routes are meant for authenticated users
   const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/seller') || path.startsWith('/buyer');
-  
+
   // Define public routes (auth routes)
   const isAuthRoute =
     path === '/login' ||
