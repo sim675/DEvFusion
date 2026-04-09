@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   ShoppingBag,
@@ -20,10 +22,88 @@ import {
 } from "lucide-react";
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {}
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
+      {/* Navbar Section */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 transition-all">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-2 cursor-pointer">
+              <Store className="h-8 w-8 text-blue-600" />
+              <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                VendorHub
+              </span>
+            </div>
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">
+                Home
+              </a>
+              <a href="#" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">
+                Features
+              </a>
+              <a href="#" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">
+                How It Works
+              </a>
+            </div>
+            <div className="flex items-center gap-3 sm:gap-4">
+              {user ? (
+                <>
+                  <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Hi, {user.name}
+                  </span>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      localStorage.removeItem("user");
+                      setUser(null);
+                      // Additionally hit logout API if you implement cookie dropping
+                    }}
+                    className="rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
+                    Logout
+                  </motion.button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="hidden sm:block px-4 py-2 text-sm font-semibold text-slate-700 hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-400 transition-colors"
+                    >
+                      Log In
+                    </motion.button>
+                  </Link>
+                  <Link href="/register/buyer">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg"
+                    >
+                      Sign Up
+                    </motion.button>
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden px-4 pt-32 pb-20 sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10" />
         <div className="relative mx-auto max-w-7xl">
           <motion.div
@@ -50,13 +130,15 @@ export default function Home() {
               >
                 Start Shopping
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="rounded-full border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-900 shadow-lg transition-all hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-              >
-                Become a Seller
-              </motion.button>
+              <Link href="/register/seller">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="rounded-full border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-900 shadow-lg transition-all hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+                >
+                  Become a Seller
+                </motion.button>
+              </Link>
             </div>
           </motion.div>
 
@@ -377,13 +459,15 @@ export default function Home() {
               Start your journey with the future of local commerce
             </p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="rounded-full bg-white px-8 py-4 text-base font-semibold text-blue-600 shadow-lg transition-all hover:bg-blue-50"
-              >
-                Sign Up
-              </motion.button>
+              <Link href="/register/buyer">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="rounded-full bg-white px-8 py-4 text-base font-semibold text-blue-600 shadow-lg transition-all hover:bg-blue-50"
+                >
+                  Sign Up
+                </motion.button>
+              </Link>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
