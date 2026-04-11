@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import Seller from '@/models/Seller';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,10 +23,21 @@ export async function POST(req: NextRequest) {
         if (typeof value === 'string') {
           body[key] = value;
         } else {
-          // It's a File — store the filename
+          // It's a File — save it to public/uploads
           const file = value as File;
           if (file.size > 0) {
-            savedFiles[key] = file.name;
+            try {
+              const buffer = Buffer.from(await file.arrayBuffer());
+              const uniqueName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+              const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+              await fs.mkdir(uploadDir, { recursive: true });
+              await fs.writeFile(path.join(uploadDir, uniqueName), buffer);
+              savedFiles[key] = `/uploads/${uniqueName}`;
+            } catch (err) {
+              console.error('File save error:', err);
+              // Fallback to storing just the name if disk save fails
+              savedFiles[key] = file.name;
+            }
           }
         }
       }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Store, LayoutDashboard, Users, LogOut, Loader2 } from "lucide-react";
+import { Store, LayoutDashboard, Users, LogOut, Loader2, FileText, Layers, RotateCcw, BarChart3, Settings } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -51,7 +51,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const navLinks = [
-    { name: "Dashboard", href: "/admin", icon: LayoutDashboard }
+    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { name: "Seller Applications", href: "/admin/applications", icon: FileText },
+    { name: "Active Sellers", href: "/admin/sellers", icon: Users },
+    { name: "Categories", href: "/admin/categories", icon: Layers },
+    { name: "Refund Requests", href: "/admin/refunds", icon: RotateCcw },
+    { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    { name: "Settings", href: "/admin/settings", icon: Settings },
   ];
 
   return (

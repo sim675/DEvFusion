@@ -99,7 +99,7 @@ const SellerSchema = new mongoose.Schema<ISeller>(
 
     sellerStatus: {
       type: String,
-      enum: ['pending_verification', 'approved', 'rejected'],
+      enum: ['pending_verification', 'approved', 'rejected', 'suspended'],
       default: 'pending_verification',
     },
   },
