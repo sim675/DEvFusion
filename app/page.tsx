@@ -61,7 +61,6 @@ const categories = [
   { name: "Appliances", icon: Tv, slug: "appliances" },
   { name: "Toys", icon: Gamepad2, slug: "toys" },
   { name: "Food", icon: Utensils, slug: "food" },
-  { name: "Auto", icon: Car, slug: "auto" },
   { name: "Sports", icon: Bike, slug: "sports" },
   { name: "Books", icon: Book, slug: "books" },
   { name: "Furniture", icon: Armchair, slug: "furniture" },

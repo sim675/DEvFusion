@@ -109,13 +109,23 @@ export async function GET(req: NextRequest) {
     if (hasQuery && hasLocation) {
       // Text search in proximity mode
       const regex = new RegExp(q, "i");
-      filterStage.$or = filterStage.$or || [];
-      filterStage.$or.push(
+      const searchConditions = [
         { name: regex },
-        { tags: { $in: [regex] } },
-        { keywords: { $in: [regex] } },
-        { description: regex }
-      );
+        { brand: regex },
+        { tags: regex },
+        { keywords: regex },
+        { shortDescription: regex },
+        { fullDescription: regex },
+      ];
+
+      if (filterStage.$or) {
+        // If category filter already exists, we must AND it with the search conditions
+        // to ensure we search WITHIN the category rather than expanding the search.
+        filterStage.$and = [{ $or: filterStage.$or }, { $or: searchConditions }];
+        delete filterStage.$or;
+      } else {
+        filterStage.$or = searchConditions;
+      }
     }
     if (Object.keys(filterStage).length > 0) {
       pipeline.push({ $match: filterStage });
@@ -185,10 +195,16 @@ export async function GET(req: NextRequest) {
           {
             $project: {
               name: 1,
-              description: 1,
+              brand: 1,
+              shortDescription: 1,
+              fullDescription: 1,
               price: 1,
+              discountPrice: 1,
+              mrp: 1,
               images: 1,
+              mainImage: 1,
               tags: 1,
+              keywords: 1,
               stock: 1,
               rating: 1,
               numReviews: 1,
@@ -199,6 +215,10 @@ export async function GET(req: NextRequest) {
               score: 1,
               vendor: 1,
               category: 1,
+              deliveryTime: 1,
+              pickupAvailable: 1,
+              specifications: 1,
+              additionalDetails: 1,
             },
           },
         ],

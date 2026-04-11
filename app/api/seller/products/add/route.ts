@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const images: string[] = [];
-    const body: Record<string, string> = {};
+    const body: Record<string, any> = {};
 
     // Handle form data including multiple images
     for (const [key, value] of formData.entries()) {
@@ -44,21 +44,46 @@ export async function POST(req: NextRequest) {
           images.push(`/uploads/products/${uniqueName}`);
         }
       } else if (typeof value === 'string') {
-        body[key] = value;
+        // Handle nested objects and arrays sent as JSON strings
+        try {
+          if (key === 'specifications' || key === 'additionalDetails') {
+            body[key] = JSON.parse(value);
+          } else {
+            body[key] = value;
+          }
+        } catch {
+          body[key] = value;
+        }
       }
     }
 
     const {
       name,
-      description,
+      brand,
+      shortDescription,
+      fullDescription,
       price,
+      discountPrice,
+      mrp,
       stock,
       categoryName,
       subcategory,
       deliveryTime,
       availability,
       pickupAvailable,
+      specifications,
+      additionalDetails,
+      mainImageIndex,
     } = body;
+
+    // Validation
+    if (!name || !brand || !shortDescription || !fullDescription || !price || !categoryName || !stock) {
+      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+    }
+
+    if (images.length === 0) {
+      return NextResponse.json({ error: 'At least one image is required.' }, { status: 400 });
+    }
 
     // Find the category by name to get its ID
     const categoryDoc = await Category.findOne({ name: categoryName });
@@ -77,18 +102,29 @@ export async function POST(req: NextRequest) {
       }
     };
 
+    // Determine main image
+    const mainIdx = parseInt(mainImageIndex || '0');
+    const mainImage = images[mainIdx] || images[0];
+
     const product = new Product({
       name,
-      description,
+      brand,
+      shortDescription,
+      fullDescription,
       price: parseFloat(price),
+      discountPrice: discountPrice ? parseFloat(discountPrice) : undefined,
+      mrp: mrp ? parseFloat(mrp) : undefined,
       stock: parseInt(stock),
       category: categoryName,
       categoryId: categoryDoc._id,
       subcategory,
       images,
+      mainImage,
       deliveryTime,
       availability: availability === 'true',
       pickupAvailable: pickupAvailable === 'true',
+      specifications: specifications || {},
+      additionalDetails: additionalDetails || {},
       vendorId: seller._id,
       location: productLocation,
       isActive: true,

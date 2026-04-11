@@ -26,13 +26,20 @@ import {
 type Product = {
   _id: string;
   name: string;
-  description: string;
+  brand: string;
+  shortDescription: string;
+  fullDescription: string;
   price: number;
+  discountPrice?: number;
+  mrp?: number;
   images: string[];
+  mainImage: string;
   tags: string[];
+  keywords: string[];
   stock: number;
   rating: number;
   numReviews: number;
+  deliveryTime: string;
   distanceMeters?: number;
   location: { city: string; state: string; pincode: string };
   vendor?: { storeName: string; city: string; state: string };
@@ -79,13 +86,14 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: index * 0.04, duration: 0.35 }}
     whileHover={{ y: -4, transition: { duration: 0.15 } }}
-    className="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl transition-shadow"
+    className="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl transition-shadow cursor-pointer"
+    onClick={() => window.location.href = `/product/${product._id}`}
   >
     {/* Image */}
     <div className="relative h-44 overflow-hidden bg-gradient-to-br from-slate-100 to-blue-50 dark:from-slate-700 dark:to-slate-900">
-      {product.images?.[0] ? (
+      {(product.mainImage || product.images?.[0]) ? (
         <img
-          src={product.images[0]}
+          src={product.mainImage || product.images[0]}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -111,33 +119,61 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
 
     {/* Details */}
     <div className="p-4">
-      {/* Category */}
-      {product.category && (
-        <Link
-          href={`/category/${product.category.slug}`}
-          className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          {product.category.name}
-        </Link>
-      )}
+      {/* Brand & Category */}
+      <div className="flex items-center justify-between gap-2">
+        {product.brand && (
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {product.brand}
+          </span>
+        )}
+        {product.category && (
+          <Link
+            href={`/category/${product.category.slug}`}
+            className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {product.category.name}
+          </Link>
+        )}
+      </div>
 
-      <h3 className="mt-1 font-semibold text-sm text-slate-900 dark:text-white line-clamp-2 leading-snug">
+      <h3 className="mt-1 font-semibold text-sm text-slate-900 dark:text-white line-clamp-1 leading-snug">
         {product.name}
       </h3>
 
-      {/* Rating */}
-      <div className="mt-1.5 flex items-center gap-1.5">
-        <StarRating rating={product.rating} />
-        <span className="text-[11px] text-slate-500 dark:text-slate-400">
-          ({product.numReviews})
-        </span>
+      {product.shortDescription && (
+        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-tight">
+          {product.shortDescription}
+        </p>
+      )}
+
+      {/* Rating & Delivery */}
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <StarRating rating={product.rating} />
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            ({product.numReviews})
+          </span>
+        </div>
+        {product.deliveryTime && (
+          <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <Tag className="h-2.5 w-2.5" />
+            {product.deliveryTime}
+          </span>
+        )}
       </div>
 
       {/* Price + Cart */}
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-lg font-bold text-slate-900 dark:text-white">
-          ₹{product.price.toLocaleString("en-IN")}
-        </span>
+      <div className="mt-3 flex items-end justify-between">
+        <div className="flex flex-col">
+          {product.mrp && product.mrp > product.price && (
+            <span className="text-[10px] text-slate-400 line-through">
+              ₹{product.mrp.toLocaleString("en-IN")}
+            </span>
+          )}
+          <span className="text-lg font-bold text-slate-900 dark:text-white leading-none">
+            ₹{product.price.toLocaleString("en-IN")}
+          </span>
+        </div>
         <button
           disabled={product.stock === 0}
           className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -149,9 +185,9 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
 
       {/* Vendor */}
       {product.vendor?.storeName && (
-        <div className="mt-2 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
           <Store className="h-3 w-3" />
-          <span className="truncate">{product.vendor.storeName}</span>
+          <span className="truncate">Sold by <span className="font-medium text-slate-700 dark:text-slate-300">{product.vendor.storeName}</span></span>
         </div>
       )}
     </div>

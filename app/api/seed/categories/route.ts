@@ -20,7 +20,6 @@ const CATEGORIES = [
   { name: "Appliances",  slug: "appliances",  icon: "Tv",         description: "Kitchen and household appliances" },
   { name: "Toys",        slug: "toys",        icon: "Gamepad2",   description: "Toys, games, and hobby supplies for all ages" },
   { name: "Food",        slug: "food",        icon: "Utensils",   description: "Fresh and packaged food from local vendors" },
-  { name: "Auto",        slug: "auto",        icon: "Car",        description: "Car accessories and spare parts" },
   { name: "Sports",      slug: "sports",      icon: "Bike",       description: "Sports gear, fitness equipment, and outdoor supplies" },
   { name: "Books",       slug: "books",       icon: "Book",       description: "Books, stationery, and educational material" },
   { name: "Furniture",   slug: "furniture",   icon: "Armchair",   description: "Furniture and home furnishing from local craftsmen" },
