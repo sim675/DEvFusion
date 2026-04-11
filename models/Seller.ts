@@ -130,6 +130,6 @@ const SellerSchema = new mongoose.Schema<ISeller>(
   { timestamps: true }
 );
 // 2dsphere index for proximity searches
-SellerSchema.index({ 'location.coordinates': '2dsphere' });
+SellerSchema.index({ location: '2dsphere' });
 export default mongoose.models.Seller ||
   mongoose.model<ISeller>('Seller', SellerSchema);

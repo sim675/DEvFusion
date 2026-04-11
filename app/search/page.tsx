@@ -54,6 +54,7 @@ type SearchResponse = {
   limit: number;
   totalPages: number;
   results: Product[];
+  locationUsed?: boolean;
   error?: string;
 };
 
@@ -249,8 +250,9 @@ function SearchPageInner() {
   const [error, setError] = useState("");
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "fetching" | "granted" | "denied">("idle");
-  const [radius, setRadius] = useState(5000); // metres
+  const [radius, setRadius] = useState(5000); // metres 
   const [showFilters, setShowFilters] = useState(false);
+  const [locationUsed, setLocationUsed] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") || "");
 
   const LIMIT = 20;
@@ -299,6 +301,7 @@ function SearchPageInner() {
           setResults(data.results);
           setTotal(data.total);
           setTotalPages(data.totalPages);
+          setLocationUsed(data.locationUsed ?? false);
         }
       } catch {
         setError("Network error. Please check your connection.");
@@ -333,11 +336,12 @@ function SearchPageInner() {
   };
 
   const radiusOptions = [
-    { label: "1 km",  value: 1000 },
-    { label: "2 km",  value: 2000 },
     { label: "5 km",  value: 5000 },
     { label: "10 km", value: 10000 },
     { label: "25 km", value: 25000 },
+    { label: "50 km", value: 50000 },
+    { label: "100 km", value: 100000 },
+    { label: "Any",   value: 500000 },
   ];
 
   return (

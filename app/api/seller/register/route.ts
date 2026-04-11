@@ -113,6 +113,18 @@ export async function POST(req: NextRequest) {
     // Hash password before saving
     const hashedPassword = await bcrypt.hash(String(password), 12);
 
+    // Parse preciseLocation for lat, lng if provided
+    let coords: [number, number] = [0, 0];
+    if (preciseLocation) {
+      // Look for two decimal numbers separated by a comma (e.g., "22.5726, 88.3639")
+      const match = String(preciseLocation).match(/([+-]?\d+\.\d+)\s*,\s*([+-]?\d+\.\d+)/);
+      if (match) {
+        // match[1] is latitude, match[2] is longitude.
+        // GeoJSON expects [longitude, latitude]
+        coords = [parseFloat(match[2]), parseFloat(match[1])];
+      }
+    }
+
     const seller = await Seller.create({
       fullName,
       phone,
@@ -128,6 +140,10 @@ export async function POST(req: NextRequest) {
       state,
       pincode,
       preciseLocation: preciseLocation || '',
+      location: {
+        type: 'Point',
+        coordinates: coords,
+      },
       serviceRadius: serviceRadius || '5km',
       deliveryType: deliveryType || 'self_delivery',
       inventoryType: inventoryType || '',

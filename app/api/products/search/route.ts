@@ -11,7 +11,7 @@ import Category from "@/models/Category";
  *   q        - keyword search string (searches name, tags, keywords, description)
  *   lat      - buyer latitude for proximity search
  *   lng      - buyer longitude for proximity search
- *   radius   - search radius in meters (default: 5000m = 5km)
+ *   radius   - search radius in meters (default: 50000m = 50km)
  *   category - category slug to filter by
  *   page     - page number (default: 1)
  *   limit    - results per page (default: 20)
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get("q")?.trim() || "";
     const lat = parseFloat(searchParams.get("lat") || "");
     const lng = parseFloat(searchParams.get("lng") || "");
-    const radius = parseInt(searchParams.get("radius") || "5000", 10); // metres
+    const radius = parseInt(searchParams.get("radius") || "50000", 10); // metres — default 50km
     const category = searchParams.get("category")?.trim() || "";
     const subcategory = searchParams.get("subcategory")?.trim() || "";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     const hasCategory = category.length > 0;
     const hasSubcategory = subcategory.length > 0;
 
-    // Require at least one search parameter (added subcategory)
+    // Require at least one search parameter
     if (!hasLocation && !hasQuery && !hasCategory && !hasSubcategory) {
       return NextResponse.json(
         { error: "Provide at least one of: q (keyword), lat+lng (location), category, or subcategory." },
@@ -49,7 +49,6 @@ export async function GET(req: NextRequest) {
     let categoryId: string | null = null;
     let categoryName: string | null = null;
     if (hasCategory) {
-      // Ensure Category model is registered
       await import("@/models/Category");
       const cat = await Category.findOne({ 
         $or: [{ slug: category }, { name: category }],
@@ -68,165 +67,217 @@ export async function GET(req: NextRequest) {
     // ---------------------------------------------------------------
     // Build Aggregation Pipeline
     // ---------------------------------------------------------------
-    const pipeline: any[] = [];
 
-    // Stage 1: Initial filtering and location if present
-    if (hasLocation) {
-      pipeline.push({
-        $geoNear: {
-          near: { type: "Point", coordinates: [lng, lat] },
-          distanceField: "distanceMeters",
-          maxDistance: radius,
-          spherical: true,
-          query: { isActive: true },
-        },
-      });
-    } else {
-      const matchStage: Record<string, any> = { isActive: true };
-      if (hasQuery) {
-        matchStage.$text = { $search: q };
-      }
-      pipeline.push({ $match: matchStage });
-      if (hasQuery) {
-        pipeline.push({
-          $addFields: { score: { $meta: "textScore" } },
-        });
-      }
-    }
-
-    // Stage 2: Filter by Category/Subcategory (if provided)
-    const filterStage: Record<string, any> = {};
-    if (categoryId) {
-      // Try filtering by categoryId (ObjectId) OR category (String name)
-      filterStage.$or = [
-        { categoryId: new mongoose.Types.ObjectId(categoryId) },
-        { category: categoryName }
-      ];
-    }
-    if (hasSubcategory) {
-      filterStage.subcategory = new RegExp(subcategory, "i");
-    }
-    if (hasQuery && hasLocation) {
-      // Text search in proximity mode
+    // Helper to build the text/keyword filter stage
+    const buildTextFilter = () => {
+      if (!hasQuery) return null;
       const regex = new RegExp(q, "i");
-      const searchConditions = [
-        { name: regex },
-        { brand: regex },
-        { tags: regex },
-        { keywords: regex },
-        { shortDescription: regex },
-        { fullDescription: regex },
-      ];
+      return {
+        $or: [
+          { name: regex },
+          { brand: regex },
+          { tags: regex },
+          { keywords: regex },
+          { shortDescription: regex },
+          { fullDescription: regex },
+        ],
+      };
+    };
 
-      if (filterStage.$or) {
-        // If category filter already exists, we must AND it with the search conditions
-        // to ensure we search WITHIN the category rather than expanding the search.
-        filterStage.$and = [{ $or: filterStage.$or }, { $or: searchConditions }];
-        delete filterStage.$or;
+    // Helper to build category filter
+    const buildCategoryFilter = () => {
+      const filter: Record<string, any> = {};
+      if (categoryId) {
+        filter.$or = [
+          { categoryId: new mongoose.Types.ObjectId(categoryId) },
+          { category: categoryName }
+        ];
+      }
+      if (hasSubcategory) {
+        filter.subcategory = new RegExp(subcategory, "i");
+      }
+      return Object.keys(filter).length > 0 ? filter : null;
+    };
+
+    // Helper to build the full pipeline
+    const buildPipeline = (useLocation: boolean) => {
+      const pipeline: any[] = [];
+
+      // Stage 1: $geoNear or $match
+      if (useLocation) {
+        const geoQuery: Record<string, any> = { isActive: true };
+
+        // Add text filter directly into $geoNear.query for efficiency
+        const textFilter = buildTextFilter();
+        if (textFilter) {
+          geoQuery.$or = textFilter.$or;
+        }
+
+        // Add category filter into $geoNear.query
+        const catFilter = buildCategoryFilter();
+        if (catFilter) {
+          if (catFilter.$or && geoQuery.$or) {
+            // Both text and category have $or — combine with $and
+            geoQuery.$and = [{ $or: geoQuery.$or }, { $or: catFilter.$or }];
+            delete geoQuery.$or;
+          } else if (catFilter.$or) {
+            geoQuery.$or = catFilter.$or;
+          }
+          if (catFilter.subcategory) {
+            geoQuery.subcategory = catFilter.subcategory;
+          }
+        }
+
+        pipeline.push({
+          $geoNear: {
+            near: { type: "Point", coordinates: [lng, lat] },
+            distanceField: "distanceMeters",
+            maxDistance: radius,
+            spherical: true,
+            key: "location.coordinates",
+            query: geoQuery,
+          },
+        });
       } else {
-        filterStage.$or = searchConditions;
-      }
-    }
-    if (Object.keys(filterStage).length > 0) {
-      pipeline.push({ $match: filterStage });
-    }
+        // Non-location search
+        const matchStage: Record<string, any> = { isActive: true };
+        
+        // Use $text index when no location (more efficient than regex)
+        if (hasQuery) {
+          matchStage.$text = { $search: q };
+        }
+        
+        pipeline.push({ $match: matchStage });
+        
+        if (hasQuery) {
+          pipeline.push({ $addFields: { score: { $meta: "textScore" } } });
+        }
 
-    // Stage 3: Filter by Seller Status (Must be Approved and Active)
-    pipeline.push({
-      $lookup: {
-        from: "sellers", // Collection name
-        localField: "vendorId",
-        foreignField: "_id",
-        as: "seller_info"
+        // Apply category/subcategory filter
+        const catFilter = buildCategoryFilter();
+        if (catFilter) {
+          pipeline.push({ $match: catFilter });
+        }
       }
-    });
-    pipeline.push({ $unwind: "$seller_info" });
-    pipeline.push({
-      $match: {
-        "seller_info.sellerStatus": "approved",
-        "seller_info.acceptingOrders": true
-      }
-    });
 
-    // Stage 4 – Count total before pagination (facet)
-    pipeline.push({
-      $facet: {
-        metadata: [{ $count: "total" }],
-        results: [
-          // Sort: proximity first (if available), then by text relevance, then newest
-          {
-            $sort: hasQuery && hasLocation
-              ? { distanceMeters: 1, score: -1 }
-              : hasLocation
+      // Stage 2: Filter by Seller Status (Must be Approved and Active)
+      pipeline.push({
+        $lookup: {
+          from: "sellers",
+          localField: "vendorId",
+          foreignField: "_id",
+          as: "seller_info"
+        }
+      });
+      pipeline.push({ $unwind: "$seller_info" });
+      pipeline.push({
+        $match: {
+          "seller_info.sellerStatus": "approved",
+          "seller_info.acceptingOrders": true
+        }
+      });
+
+      // Stage 3: Facet for count + paginated results
+      pipeline.push({
+        $facet: {
+          metadata: [{ $count: "total" }],
+          results: [
+            {
+              $sort: useLocation
                 ? { distanceMeters: 1 }
                 : hasQuery
                   ? { score: -1 }
                   : { createdAt: -1 },
-          },
-          { $skip: skip },
-          { $limit: limit },
-          // Join with Seller model for shop info
-          {
-            $lookup: {
-              from: "sellers",
-              localField: "vendorId",
-              foreignField: "_id",
-              as: "vendor",
-              pipeline: [
-                { $project: { storeName: 1, city: 1, state: 1, rating: 1, serviceRadius: 1 } },
-              ],
             },
-          },
-          { $unwind: { path: "$vendor", preserveNullAndEmptyArrays: true } },
-          // Join with Category model
-          {
-            $lookup: {
-              from: "categories",
-              localField: "categoryId",
-              foreignField: "_id",
-              as: "category",
-              pipeline: [
-                { $project: { name: 1, slug: 1, icon: 1 } },
-              ],
+            { $skip: skip },
+            { $limit: limit },
+            // Join vendor info for display
+            {
+              $lookup: {
+                from: "sellers",
+                localField: "vendorId",
+                foreignField: "_id",
+                as: "vendor",
+                pipeline: [
+                  { $project: { storeName: 1, city: 1, state: 1, rating: 1, serviceRadius: 1 } },
+                ],
+              },
             },
-          },
-          { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-          // Project only fields the frontend needs
-          {
-            $project: {
-              name: 1,
-              brand: 1,
-              shortDescription: 1,
-              fullDescription: 1,
-              price: 1,
-              discountPrice: 1,
-              mrp: 1,
-              images: 1,
-              mainImage: 1,
-              tags: 1,
-              keywords: 1,
-              stock: 1,
-              rating: 1,
-              numReviews: 1,
-              location: 1,
-              isActive: 1,
-              createdAt: 1,
-              distanceMeters: 1,
-              score: 1,
-              vendor: 1,
-              vendorId: 1,
-              category: 1,
-              deliveryTime: 1,
-              pickupAvailable: 1,
-              specifications: 1,
-              additionalDetails: 1,
+            { $unwind: { path: "$vendor", preserveNullAndEmptyArrays: true } },
+            // Join category info
+            {
+              $lookup: {
+                from: "categories",
+                localField: "categoryId",
+                foreignField: "_id",
+                as: "category",
+                pipeline: [
+                  { $project: { name: 1, slug: 1, icon: 1 } },
+                ],
+              },
             },
-          },
-        ],
-      },
-    });
+            { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+            // Project needed fields
+            {
+              $project: {
+                name: 1,
+                brand: 1,
+                shortDescription: 1,
+                fullDescription: 1,
+                price: 1,
+                discountPrice: 1,
+                mrp: 1,
+                images: 1,
+                mainImage: 1,
+                tags: 1,
+                keywords: 1,
+                stock: 1,
+                rating: 1,
+                numReviews: 1,
+                location: 1,
+                isActive: 1,
+                createdAt: 1,
+                distanceMeters: 1,
+                score: 1,
+                vendor: 1,
+                vendorId: 1,
+                category: 1,
+                deliveryTime: 1,
+                pickupAvailable: 1,
+                specifications: 1,
+                additionalDetails: 1,
+              },
+            },
+          ],
+        },
+      });
 
-    const [data] = await Product.aggregate(pipeline);
+      return pipeline;
+    };
+
+    // ---------------------------------------------------------------
+    // Execute: Try with location first, fallback to non-location
+    // ---------------------------------------------------------------
+    let data: any;
+    let locationUsed = hasLocation;
+
+    if (hasLocation) {
+      const pipeline = buildPipeline(true);
+      [data] = await Product.aggregate(pipeline);
+
+      const geoTotal = data?.metadata?.[0]?.total ?? 0;
+
+      // If $geoNear returned 0 results but we have a keyword query,
+      // fallback to a non-location search so the user still sees results
+      if (geoTotal === 0 && (hasQuery || hasCategory || hasSubcategory)) {
+        const fallbackPipeline = buildPipeline(false);
+        [data] = await Product.aggregate(fallbackPipeline);
+        locationUsed = false;
+      }
+    } else {
+      const pipeline = buildPipeline(false);
+      [data] = await Product.aggregate(pipeline);
+    }
 
     const total = data?.metadata?.[0]?.total ?? 0;
     const results = data?.results ?? [];
@@ -238,6 +289,7 @@ export async function GET(req: NextRequest) {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        locationUsed,
         results,
       },
       { status: 200 }
