@@ -85,12 +85,11 @@ const ProductSchema = new Schema<IProduct>(
     },
     images: {
       type: [String],
-      required: [true, "At least one image is required"],
-      validate: [(val: string[]) => val.length > 0, "At least one image is required"],
+      default: [],
     },
     mainImage: {
       type: String,
-      required: [true, "Main image selection is required"],
+      default: "",
     },
     stock: {
       type: Number,

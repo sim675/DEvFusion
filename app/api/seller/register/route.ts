@@ -26,17 +26,25 @@ export async function POST(req: NextRequest) {
           // It's a File — save it to public/uploads
           const file = value as File;
           if (file.size > 0) {
-            try {
-              const buffer = Buffer.from(await file.arrayBuffer());
-              const uniqueName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-              const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-              await fs.mkdir(uploadDir, { recursive: true });
-              await fs.writeFile(path.join(uploadDir, uniqueName), buffer);
-              savedFiles[key] = `/uploads/${uniqueName}`;
-            } catch (err) {
-              console.error('File save error:', err);
-              // Fallback to storing just the name if disk save fails
-              savedFiles[key] = file.name;
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const isVercel = !!process.env.VERCEL;
+
+            if (isVercel) {
+              // On Vercel, store as Base64 Data URI
+              const base64 = buffer.toString('base64');
+              savedFiles[key] = `data:${file.type};base64,${base64}`;
+            } else {
+              try {
+                const uniqueName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+                await fs.mkdir(uploadDir, { recursive: true });
+                await fs.writeFile(path.join(uploadDir, uniqueName), buffer);
+                savedFiles[key] = `/uploads/${uniqueName}`;
+              } catch (err) {
+                console.warn('Local file save error, falling back to Base64:', err);
+                const base64 = buffer.toString('base64');
+                savedFiles[key] = `data:${file.type};base64,${base64}`;
+              }
             }
           }
         }

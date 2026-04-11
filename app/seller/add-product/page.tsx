@@ -417,8 +417,9 @@ export default function AddProductPage() {
                 >
                   <div className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-3xl p-10 hover:border-violet-500/50 transition-colors bg-white/[0.02]">
                     <Upload className="h-8 w-8 text-violet-500 mb-4" />
-                    <h3 className="text-lg font-semibold mb-1">Upload Product Images</h3>
-                    <p className="text-xs text-slate-500 mb-6">PNG, JPG up to 10MB</p>
+                    <h3 className="text-lg font-semibold mb-1">Upload Product Images <span className="text-slate-500 text-sm font-normal">(Optional)</span></h3>
+                    <p className="text-xs text-slate-500 mb-2 text-center max-w-sm">PNG, JPG up to 10MB. You can skip this and add images later.</p>
+                    <p className="text-[10px] text-amber-500/80 mb-6 text-center italic">Note: Local image uploads are disabled in some environments (e.g. Vercel). Cloud storage is recommended for production.</p>
                     <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" id="img-upload" />
                     <label htmlFor="img-upload" className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 rounded-xl font-bold transition-all cursor-pointer shadow-lg shadow-violet-500/20">
                       Choose Files
@@ -532,14 +533,12 @@ export default function AddProductPage() {
                 disabled={
                   (step === 1 && !formData.categoryName) ||
                   (step === 2 && (!formData.name || !formData.brand || !formData.shortDescription || !formData.fullDescription)) ||
-                  (step === 3 && (!formData.price || !formData.stock)) ||
-                  (step === 4 && images.length === 0)
+                  (step === 3 && (!formData.price || !formData.stock))
                 }
                 className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all shadow-lg ${
                   ((step === 1 && !formData.categoryName) ||
                   (step === 2 && (!formData.name || !formData.brand || !formData.shortDescription || !formData.fullDescription)) ||
-                  (step === 3 && (!formData.price || !formData.stock)) ||
-                  (step === 4 && images.length === 0))
+                  (step === 3 && (!formData.price || !formData.stock)))
                     ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
                     : "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/20"
                 }`}

@@ -37,11 +37,30 @@ export async function POST(req: NextRequest) {
       if (value instanceof File) {
         if (value.size > 0) {
           const buffer = Buffer.from(await value.arrayBuffer());
-          const uniqueName = `${Date.now()}-${value.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
-          const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'products');
-          await fs.mkdir(uploadDir, { recursive: true });
-          await fs.writeFile(path.join(uploadDir, uniqueName), buffer);
-          images.push(`/uploads/products/${uniqueName}`);
+          
+          // Check if we are on Vercel or in a read-only environment
+          const isVercel = !!process.env.VERCEL;
+          
+          if (isVercel) {
+            // On Vercel, store as Base64 Data URI to bypass EROFS
+            const base64 = buffer.toString('base64');
+            const dataUri = `data:${value.type};base64,${base64}`;
+            images.push(dataUri);
+          } else {
+            // Local environment: use filesystem
+            try {
+              const uniqueName = `${Date.now()}-${value.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+              const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'products');
+              await fs.mkdir(uploadDir, { recursive: true });
+              await fs.writeFile(path.join(uploadDir, uniqueName), buffer);
+              images.push(`/uploads/products/${uniqueName}`);
+            } catch (fsError: any) {
+              console.warn(`Local file write failed: ${fsError.message}. Falling back to Base64.`);
+              const base64 = buffer.toString('base64');
+              const dataUri = `data:${value.type};base64,${base64}`;
+              images.push(dataUri);
+            }
+          }
         }
       } else if (typeof value === 'string') {
         // Handle nested objects and arrays sent as JSON strings
@@ -81,10 +100,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
-    if (images.length === 0) {
-      return NextResponse.json({ error: 'At least one image is required.' }, { status: 400 });
-    }
-
     // Find the category by name to get its ID
     const categoryDoc = await Category.findOne({ name: categoryName });
     if (!categoryDoc) {
@@ -104,7 +119,7 @@ export async function POST(req: NextRequest) {
 
     // Determine main image
     const mainIdx = parseInt(mainImageIndex || '0');
-    const mainImage = images[mainIdx] || images[0];
+    const mainImage = images.length > 0 ? (images[mainIdx] || images[0]) : "";
 
     const product = new Product({
       name,
