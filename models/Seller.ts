@@ -23,6 +23,14 @@ export interface ISeller extends mongoose.Document {
   serviceRadius: '2km' | '5km' | '10km';
   deliveryType: 'self_delivery' | 'pickup_only' | 'platform_delivery';
 
+   // --- ADDED FOR HYPERLOCAL SEARCH ---
+  location: {
+    type: { type: string; enum: ['Point']; default: 'Point' };
+    coordinates: [number, number]; // [longitude, latitude]
+  };
+  shopDescription?: string; 
+  // -----------------------------------
+
   // Step 4 – Store Operations
   inventoryType?: 'ready_stock' | 'made_to_order';
   acceptingOrders: boolean;
@@ -41,7 +49,8 @@ export interface ISeller extends mongoose.Document {
 
   // Status
   sellerStatus: 'pending_verification' | 'approved' | 'rejected';
-
+ isApproved?: boolean; // Added for compatibility if needed
+ 
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +82,20 @@ const SellerSchema = new mongoose.Schema<ISeller>(
     state: { type: String, required: true },
     pincode: { type: String, required: true },
     preciseLocation: { type: String, default: '' },
+
+     // --- GEOSPATIAL FIELD FOR HYPERLOCAL ---
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [lng, lat]
+        required: true,
+        default: [0, 0] // Default to prevent errors
+      },
+    },
     serviceRadius: { type: String, enum: ['2km', '5km', '10km'], default: '5km' },
     deliveryType: {
       type: String,
@@ -102,9 +125,11 @@ const SellerSchema = new mongoose.Schema<ISeller>(
       enum: ['pending_verification', 'approved', 'rejected'],
       default: 'pending_verification',
     },
+     isApproved: { type: Boolean, default: false }
   },
   { timestamps: true }
 );
-
+// 2dsphere index for proximity searches
+SellerSchema.index({ 'location.coordinates': '2dsphere' });
 export default mongoose.models.Seller ||
   mongoose.model<ISeller>('Seller', SellerSchema);

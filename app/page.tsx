@@ -40,15 +40,15 @@ import {
   Check,
 } from "lucide-react";
 
-type Address = {
-  _id?: string;
+type Address = { 
+  _id?: string; 
   id?: string; // for compatibility
-  name: string;
-  phone?: string;
-  street: string;
-  city: string;
-  state: string;
-  pincode: string;
+  name: string; 
+  phone?: string; 
+  street: string; 
+  city: string; 
+  state: string; 
+  pincode: string; 
   isDefault?: boolean;
 };
 
@@ -82,6 +82,23 @@ export default function Home() {
   const [formData, setFormData] = useState<Address>({ name: "", street: "", city: "", state: "", pincode: "", phone: "" });
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // --- SEARCH ---
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+
+    // Build search URL — include active address coords if available
+    const activeAddr = addresses.find(a => (a._id || a.id) === activeAddressId);
+    const params = new URLSearchParams({ q });
+    // If the active address has coordinates stored (future enhancement), pass them.
+    // For now we navigate with just the keyword; the /search page will
+    // request the user's browser geolocation for hyperlocal results.
+    router.push(`/search?${params.toString()}`);
+  };
 
   const fetchAddresses = async () => {
     if (!user) return;
@@ -118,19 +135,19 @@ export default function Home() {
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
+    
     setIsAddressLoading(true);
     const addressId = formData._id || formData.id;
     const url = addressId ? `/api/addresses/${addressId}` : "/api/addresses";
     const method = addressId ? "PUT" : "POST";
-
+    
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-
+      
       if (res.ok) {
         await fetchAddresses();
         setModalView("list");
@@ -149,7 +166,7 @@ export default function Home() {
   const handleDeleteAddress = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!user) return;
-
+    
     setIsAddressLoading(true);
     try {
       const res = await fetch(`/api/addresses/${id}`, { method: "DELETE" });
@@ -251,7 +268,7 @@ export default function Home() {
                 >
                   {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                 </button>
-                <div
+                <div 
                   className="flex items-center gap-2 cursor-pointer"
                   onClick={() => router.push("/")}
                 >
@@ -263,7 +280,7 @@ export default function Home() {
               </div>
 
               {/* Desktop Location Selector */}
-              <div
+              <div 
                 onClick={openAddressModal}
                 className="hidden lg:flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1.5 rounded-lg transition-colors"
               >
@@ -277,14 +294,25 @@ export default function Home() {
               </div>
             </div>
             <div className="flex-1 mx-4 hidden md:flex">
-              <div className="w-full relative">
-                <input
-                  type="text"
-                  placeholder="Search for Products, Brands and More"
-                  className="w-full rounded-full border border-slate-300 px-5 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                />
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-              </div>
+              <form onSubmit={handleSearch} className="w-full">
+                <div className="w-full relative">
+                  <input
+                    id="desktop-search-input"
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search for Products, Brands and More"
+                    className="w-full rounded-full border border-slate-300 px-5 py-2 pl-10 pr-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                  />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                  <button
+                    type="submit"
+                    className="absolute right-2 top-1 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
+                  >
+                    Search
+                  </button>
+                </div>
+              </form>
             </div>
             <div className="flex items-center gap-3 sm:gap-4">
               <button
@@ -312,58 +340,55 @@ export default function Home() {
                     className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white/90 backdrop-blur-md shadow-lg dark:border-slate-800 dark:bg-slate-950/90 py-2 z-50 overflow-hidden"
                   >
                     {user ? (
-                      <>
-                        {user.role === "seller" ? (
-                          // ── Seller dropdown ──────────────────────
-                          <>
-                            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
-                              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Seller Account</p>
-                              <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{user.storeName}</p>
-                            </div>
-                            <Link
-                              href="/seller/status"
-                              onClick={() => setIsDropdownOpen(false)}
-                              className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-                            >
-                              Check Status
-                            </Link>
-                            <Link
-                              href="/seller/dashboard"
-                              onClick={() => setIsDropdownOpen(false)}
-                              className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-                            >
-                              My Store
-                            </Link>
-                            <button
-                              onClick={() => { setIsDropdownOpen(false); handleLogout(); }}
-                              disabled={isLoggingOut}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
-                            >
-                              {isLoggingOut ? "Signing out…" : "Logout"}
-                            </button>
-                          </>
-                        ) : (
-                          // ── Regular user dropdown ─────────────────
-                          <>
-                            <Link href="/profile" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                              Profile
-                            </Link>
-                            <Link href="/wishlist" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                              Wishlist
-                            </Link>
-                            <Link href="/orders" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                              Orders
-                            </Link>
-                            <button
-                              onClick={() => { setIsDropdownOpen(false); handleLogout(); }}
-                              disabled={isLoggingOut}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
-                            >
-                              {isLoggingOut ? "Signing out…" : "Logout"}
-                            </button>
-                          </>
-                        )}
-                      </>
+                      user.role === "seller" ? (
+                        // ── Seller dropdown ──────────────────────
+                        <>
+                          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Seller Account</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{user.storeName}</p>
+                          </div>
+                          <Link
+                            href="/seller/status"
+                            onClick={() => setIsDropdownOpen(false)}
+                            className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            Check Status
+                          </Link>
+                          <Link
+                            href="/seller/dashboard"
+                            onClick={() => setIsDropdownOpen(false)}
+                            className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            My Store
+                          </Link>
+                          <button
+                            onClick={() => { setIsDropdownOpen(false); handleLogout(); }}
+                            disabled={isLoggingOut}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
+                          >
+                            {isLoggingOut ? "Signing out…" : "Logout"}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <Link href="/profile" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                            Profile
+                          </Link>
+                          <Link href="/wishlist" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                            Wishlist
+                          </Link>
+                          <Link href="/orders" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                            Orders
+                          </Link>
+                          <button
+                            onClick={() => { setIsDropdownOpen(false); handleLogout(); }}
+                            disabled={isLoggingOut}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
+                          >
+                            {isLoggingOut ? "Signing out…" : "Logout"}
+                          </button>
+                        </>
+                      )
                     ) : (
                       <>
                         <Link href="/login" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
@@ -417,7 +442,7 @@ export default function Home() {
           >
             <div className="px-4 py-4 space-y-6">
               {/* Mobile Location Selector */}
-              <div
+              <div 
                 onClick={() => { openAddressModal(); setIsMobileMenuOpen(false); }}
                 className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
@@ -431,14 +456,26 @@ export default function Home() {
               </div>
 
               {/* Mobile Search */}
-              <div className="w-full relative">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  className="w-full rounded-full border border-slate-300 px-5 py-3 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-white shadow-sm"
-                />
-                <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-500" />
-              </div>
+              <form onSubmit={(e) => { handleSearch(e); setIsMobileMenuOpen(false); }} className="w-full">
+                <div className="w-full relative">
+                  <input
+                    id="mobile-search-input"
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search products..."
+                    className="w-full rounded-full border border-slate-300 px-5 py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-white shadow-sm"
+                  />
+                  <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-500" />
+                  <button
+                    type="submit"
+                    className="absolute right-3 top-2.5 rounded-full bg-blue-600 p-1.5 text-white hover:bg-blue-700 transition-colors"
+                    aria-label="Submit search"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </form>
 
               {/* Mobile Categories Grid */}
               <div>
@@ -481,14 +518,14 @@ export default function Home() {
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 {modalView === "list" ? "Select Delivery Location" : formData.id ? "Edit Address" : "Add New Address"}
               </h2>
-              <button
-                onClick={() => setIsLocationModalOpen(false)}
+              <button 
+                onClick={() => setIsLocationModalOpen(false)} 
                 className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-
+            
             {modalView === "list" ? (
               <div className="space-y-4">
                 <div className="max-h-60 overflow-y-auto space-y-3 pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -498,13 +535,14 @@ export default function Home() {
                     </div>
                   ) : (
                     addresses.map((addr) => (
-                      <div
+                      <div 
                         key={addr._id || addr.id}
                         onClick={() => handleSelectAddress((addr._id || addr.id) as string)}
-                        className={`relative p-4 rounded-xl border cursor-pointer transition-all ${activeAddressId === (addr._id || addr.id)
-                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                        className={`relative p-4 rounded-xl border cursor-pointer transition-all ${
+                          activeAddressId === (addr._id || addr.id)
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
                             : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50 dark:bg-slate-800/50"
-                          }`}
+                        }`}
                       >
                         {activeAddressId === (addr._id || addr.id) && (
                           <div className="absolute top-3 right-3 text-blue-600 dark:text-blue-400">
@@ -515,9 +553,9 @@ export default function Home() {
                         <p className="text-sm text-slate-600 dark:text-slate-400">{addr.street}</p>
                         <p className="text-sm text-slate-600 dark:text-slate-400">{addr.city}, {addr.state} {addr.pincode}</p>
                         {addr.phone && <p className="text-[11px] text-slate-500 mt-1">📞 {addr.phone}</p>}
-
+                        
                         <div className="flex gap-2 mt-3 text-sm">
-                          <button
+                          <button 
                             onClick={(e) => startEditAddress(e, addr)}
                             disabled={isAddressLoading}
                             className="flex items-center gap-1 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-50"
@@ -525,7 +563,7 @@ export default function Home() {
                             <Pencil className="h-3 w-3" /> Edit
                           </button>
                           <span className="text-slate-300 dark:text-slate-600">|</span>
-                          <button
+                          <button 
                             onClick={(e) => handleDeleteAddress(e, (addr._id || addr.id) as string)}
                             disabled={isAddressLoading}
                             className="flex items-center gap-1 text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
@@ -537,7 +575,7 @@ export default function Home() {
                     ))
                   )}
                 </div>
-
+                
                 <button
                   onClick={() => {
                     setFormData({ name: "", street: "", city: "", state: "", pincode: "", phone: "" });
@@ -620,7 +658,7 @@ export default function Home() {
                     />
                   </div>
                 </div>
-
+                
                 <div className="mt-6 flex gap-3">
                   <button
                     type="button"
