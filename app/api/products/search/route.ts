@@ -256,24 +256,14 @@ export async function GET(req: NextRequest) {
     };
 
     // ---------------------------------------------------------------
-    // Execute: Try with location first, fallback to non-location
+    // Execute pipeline — location is ALWAYS respected, no silent fallback
     // ---------------------------------------------------------------
     let data: any;
-    let locationUsed = hasLocation;
+    const locationUsed = hasLocation;
 
     if (hasLocation) {
       const pipeline = buildPipeline(true);
       [data] = await Product.aggregate(pipeline);
-
-      const geoTotal = data?.metadata?.[0]?.total ?? 0;
-
-      // If $geoNear returned 0 results but we have a keyword query,
-      // fallback to a non-location search so the user still sees results
-      if (geoTotal === 0 && (hasQuery || hasCategory || hasSubcategory)) {
-        const fallbackPipeline = buildPipeline(false);
-        [data] = await Product.aggregate(fallbackPipeline);
-        locationUsed = false;
-      }
     } else {
       const pipeline = buildPipeline(false);
       [data] = await Product.aggregate(pipeline);
@@ -281,6 +271,10 @@ export async function GET(req: NextRequest) {
 
     const total = data?.metadata?.[0]?.total ?? 0;
     const results = data?.results ?? [];
+
+    // Tell the frontend whether this was a location-restricted query
+    // so it can show an informative "expand radius" prompt instead of a blank page.
+    const outOfRange = hasLocation && total === 0;
 
     return NextResponse.json(
       {
@@ -290,6 +284,8 @@ export async function GET(req: NextRequest) {
         limit,
         totalPages: Math.ceil(total / limit),
         locationUsed,
+        outOfRange,   // true = there might be results if the radius is widened
+        radiusUsedM: hasLocation ? radius : null,
         results,
       },
       { status: 200 }

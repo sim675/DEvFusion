@@ -55,6 +55,8 @@ type SearchResponse = {
   totalPages: number;
   results: Product[];
   locationUsed?: boolean;
+  outOfRange?: boolean;
+  radiusUsedM?: number | null;
   error?: string;
 };
 
@@ -253,6 +255,7 @@ function SearchPageInner() {
   const [radius, setRadius] = useState(5000); // metres 
   const [showFilters, setShowFilters] = useState(false);
   const [locationUsed, setLocationUsed] = useState(true);
+  const [outOfRange, setOutOfRange] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") || "");
 
   const LIMIT = 20;
@@ -302,6 +305,7 @@ function SearchPageInner() {
           setTotal(data.total);
           setTotalPages(data.totalPages);
           setLocationUsed(data.locationUsed ?? false);
+          setOutOfRange(data.outOfRange ?? false);
         }
       } catch {
         setError("Network error. Please check your connection.");
@@ -503,13 +507,53 @@ function SearchPageInner() {
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && !error && results.length === 0 && (query || userCoords) && (
+        {/* Empty state — out of range: location was used but found nothing */}
+        {!loading && !error && results.length === 0 && outOfRange && (
+          <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
+            <div className="h-20 w-20 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <MapPin className="h-10 w-10 text-amber-500" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-700 dark:text-slate-200">
+                No products found within {metersToKm(radius)}
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-sm">
+                There are no sellers listing{query ? ` &ldquo;${query}&rdquo;` : " products"} near your location yet.
+                Try widening your search area:
+              </p>
+            </div>
+            {/* Quick radius-expand buttons */}
+            <div className="flex flex-wrap justify-center gap-2 mt-1">
+              {radiusOptions
+                .filter((o) => o.value > radius)
+                .slice(0, 4)
+                .map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setRadius(opt.value)}
+                    className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold transition-colors"
+                  >
+                    Try {opt.label}
+                  </button>
+                ))}
+            </div>
+            {/* Fallback: search without location */}
+            <button
+              onClick={() => setUserCoords(null)}
+              className="text-sm text-slate-500 dark:text-slate-400 underline underline-offset-2 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            >
+              Remove location filter and search everywhere
+            </button>
+          </div>
+        )}
+
+        {/* Empty state — generic: no location filter, just no matches */}
+        {!loading && !error && results.length === 0 && !outOfRange && (query || userCoords) && (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
             <PackageSearch className="h-16 w-16 text-slate-300 dark:text-slate-600" />
             <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300">No products found</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
-              Try a different keyword, increase the search radius, or browse categories.
+              Try a different keyword or browse categories.
             </p>
             <Link
               href="/"
