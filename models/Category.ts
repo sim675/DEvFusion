@@ -9,6 +9,7 @@ export interface ICategory extends Document {
   description?: string;
   image?: string;
   icon?: string;
+  subcategories: string[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +46,10 @@ const CategorySchema = new Schema<ICategory>(
       type: String, // Stores the name of the icon (e.g., 'Shirt') for frontend mapping
       default: "",
     },
+    subcategories: {
+      type: [String],
+      default: [],
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -55,6 +60,9 @@ const CategorySchema = new Schema<ICategory>(
   }
 );
 
-// Export the model
-export default mongoose.models.Category ||
-  mongoose.model<ICategory>("Category", CategorySchema);
+// Force compile the model by clearing the generic cache during development upgrades
+if (mongoose.models.Category) {
+  delete mongoose.models.Category;
+}
+
+export default mongoose.model<ICategory>("Category", CategorySchema);
