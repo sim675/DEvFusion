@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Script from "next/script";
 import { motion } from "framer-motion";
 import { MapPin, CreditCard, ChevronLeft, Package, CheckCircle2, ShieldCheck, Truck, Loader2 } from "lucide-react";
 
@@ -64,27 +65,105 @@ export default function CheckoutPage() {
     }
     
     setPlacingOrder(true);
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          addressId: selectedAddressId,
-          paymentMethod
-        }),
-      });
-      
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || "Checkout failed");
+    
+    if (paymentMethod === "COD") {
+      try {
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            addressId: selectedAddressId,
+            paymentMethod
+          }),
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(data.error || "Checkout failed");
+        }
+        
+        router.push(`/success?orderId=${data.orderId}`);
+        
+      } catch (err: any) {
+        alert(err.message);
+        setPlacingOrder(false);
       }
-      
-      router.push(`/success?orderId=${data.orderId}`);
-      
-    } catch (err: any) {
-      alert(err.message);
-      setPlacingOrder(false);
+    } else if (paymentMethod === "Online") {
+      try {
+        // 1. Create Razorpay Order
+        const res = await fetch("/api/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addressId: selectedAddressId })
+        });
+        const orderData = await res.json();
+
+        if (!res.ok) {
+          throw new Error(orderData.error || "Failed to create order");
+        }
+
+        // 2. Initialize Razorpay Checkout
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_dummy",
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "DEvFusion Hyperlocal",
+          description: "Test Transaction",
+          order_id: orderData.order_id,
+          handler: async function (response: any) {
+            // 3. Verify Payment
+            try {
+              const verifyRes = await fetch("/api/verify-payment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  addressId: selectedAddressId
+                })
+              });
+              
+              const verifyData = await verifyRes.json();
+              if (verifyRes.ok) {
+                router.push(`/success?orderId=${verifyData.orderId}`);
+              } else {
+                alert(verifyData.error || "Payment verification failed");
+                setPlacingOrder(false);
+              }
+            } catch (err) {
+              alert("Error verifying payment");
+              setPlacingOrder(false);
+            }
+          },
+          prefill: {
+            name: "Test User",
+            email: "test@example.com",
+            contact: "9999999999"
+          },
+          theme: {
+            color: "#2563eb"
+          }
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on("payment.failed", async function (response: any) {
+          alert("Payment Failed: " + response.error.description);
+          setPlacingOrder(false);
+          await fetch("/api/payment-failed", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(response.error)
+          });
+        });
+        
+        rzp.open();
+        
+      } catch (err: any) {
+        alert(err.message);
+        setPlacingOrder(false);
+      }
     }
   };
 
@@ -102,7 +181,9 @@ export default function CheckoutPage() {
   const total = subtotal + deliveryFee;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-20 pb-20">
+    <>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-20 pb-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3 mb-8">
           <Link href="/cart" className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
@@ -188,12 +269,18 @@ export default function CheckoutPage() {
                 </div>
 
                 <div 
-                  className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/20 cursor-not-allowed opacity-60"
+                  onClick={() => setPaymentMethod("Online")}
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                    paymentMethod === "Online" 
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
+                      : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50"
+                  }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-900 dark:text-white">Credit/Debit Card</span>
-                    <span className="text-[10px] font-bold uppercase bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded-full">Coming Soon</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">Online Payment (Card/UPI)</span>
+                    {paymentMethod === "Online" && <CheckCircle2 className="h-5 w-5 text-blue-600" />}
                   </div>
+                  <p className="text-xs text-slate-500 mt-1">Pay securely via Razorpay.</p>
                 </div>
               </div>
             </div>
@@ -273,5 +360,6 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

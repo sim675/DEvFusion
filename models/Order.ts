@@ -59,7 +59,7 @@ const OrderSchema = new Schema<IOrder>(
     paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
     orderStatus: {
       type: String,
-      enum: ["Pending", "Preparing", "Out for Delivery", "Delivered", "Cancelled"],
+      enum: ["Pending", "Preparing", "Placed", "Out for Delivery", "Delivered", "Cancelled"],
       default: "Pending"
     },
     totalAmount: { type: Number, required: true },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Star, MapPin, Store, Truck, Clock, ShieldCheck, RefreshCcw, PackageCheck } from "lucide-react";
 
 interface ProductInfoProps {
@@ -12,6 +13,7 @@ interface ProductInfoProps {
 export default function ProductInfo({ product, seller, reviewStats }: ProductInfoProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const router = useRouter();
 
   const handleAddToCart = async () => {
     setIsAdding(true);
@@ -34,6 +36,29 @@ export default function ProductInfo({ product, seller, reviewStats }: ProductInf
     } catch (error: any) {
       alert(error.message);
     } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    setIsAdding(true);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product._id,
+          vendorId: product.vendorId || seller._id,
+          quantity: 1,
+          price: product.price,
+          image: product.mainImage || (product.images && product.images[0]) || ""
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to initiate buy now");
+      router.push("/cart");
+    } catch (error: any) {
+      alert(error.message);
       setIsAdding(false);
     }
   };
@@ -156,8 +181,12 @@ export default function ProductInfo({ product, seller, reviewStats }: ProductInf
         >
           {isAdding ? "ADDING..." : added ? "ADDED TO CART!" : "ADD TO CART"}
         </button>
-        <button className="flex-1 px-8 py-4 bg-violet-600 text-white font-black rounded-2xl hover:bg-violet-700 shadow-xl shadow-violet-500/20 transition-all active:scale-95">
-          BUY NOW
+        <button 
+          onClick={handleBuyNow}
+          disabled={isAdding}
+          className="flex-1 px-8 py-4 bg-violet-600 text-white font-black rounded-2xl hover:bg-violet-700 shadow-xl shadow-violet-500/20 transition-all active:scale-95 disabled:opacity-50"
+        >
+          {isAdding ? "PROCESSING..." : "BUY NOW"}
         </button>
       </div>
 
