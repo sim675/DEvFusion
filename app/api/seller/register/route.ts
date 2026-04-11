@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import Seller from '@/models/Seller';
 
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
       phone,
       email,
       storeName,
+      password,
       businessType,
       productCategory,
       gstNumber,
@@ -47,9 +49,6 @@ export async function POST(req: NextRequest) {
       preciseLocation,
       serviceRadius,
       deliveryType,
-      deliveryTimeCommitment,
-      openTime,
-      closeTime,
       inventoryType,
       acceptingOrders,
       pickupAvailable,
@@ -61,16 +60,22 @@ export async function POST(req: NextRequest) {
 
     // Required fields check
     const required = [
-      fullName, phone, email, storeName,
+      fullName, phone, email, storeName, password,
       businessType, productCategory,
-      shopAddress, city, state, pincode, preciseLocation,
-      openTime, closeTime,
-      inventoryType,
+      shopAddress, city, state, pincode,
       accountHolderName, bankName, accountNumber, ifscCode,
     ];
     if (required.some((f) => !f || String(f).trim() === '')) {
       return NextResponse.json(
         { error: 'Missing required fields.' },
+        { status: 400 }
+      );
+    }
+
+    // Password length check
+    if (String(password).length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters.' },
         { status: 400 }
       );
     }
@@ -84,11 +89,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(String(password), 12);
+
     const seller = await Seller.create({
       fullName,
       phone,
       email,
       storeName,
+      password: hashedPassword,
       businessType,
       productCategory,
       gstNumber: gstNumber || '',
@@ -97,13 +106,10 @@ export async function POST(req: NextRequest) {
       city,
       state,
       pincode,
-      preciseLocation,
+      preciseLocation: preciseLocation || '',
       serviceRadius: serviceRadius || '5km',
       deliveryType: deliveryType || 'self_delivery',
-      deliveryTimeCommitment: deliveryTimeCommitment || 'same_day',
-      openTime,
-      closeTime,
-      inventoryType,
+      inventoryType: inventoryType || '',
       acceptingOrders: acceptingOrders === 'true' || acceptingOrders === true,
       pickupAvailable: pickupAvailable === 'true' || pickupAvailable === true,
       accountHolderName,

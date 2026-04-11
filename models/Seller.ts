@@ -6,6 +6,7 @@ export interface ISeller extends mongoose.Document {
   phone: string;
   email: string;
   storeName: string;
+  password: string;
 
   // Step 2 – Business Details
   businessType: 'individual' | 'sole_proprietor' | 'shop_owner';
@@ -18,15 +19,12 @@ export interface ISeller extends mongoose.Document {
   city: string;
   state: string;
   pincode: string;
-  preciseLocation: string;
+  preciseLocation?: string;
   serviceRadius: '2km' | '5km' | '10km';
   deliveryType: 'self_delivery' | 'pickup_only' | 'platform_delivery';
-  deliveryTimeCommitment: 'instant' | 'same_day' | 'next_day';
-  openTime: string;
-  closeTime: string;
 
   // Step 4 – Store Operations
-  inventoryType: 'ready_stock' | 'made_to_order';
+  inventoryType?: 'ready_stock' | 'made_to_order';
   acceptingOrders: boolean;
   pickupAvailable: boolean;
 
@@ -59,6 +57,7 @@ const SellerSchema = new mongoose.Schema<ISeller>(
       match: [/^[\w.-]+@[\w.-]+\.\w{2,}$/, 'Invalid email'],
     },
     storeName: { type: String, required: true, trim: true },
+    password: { type: String, required: true },
 
     businessType: {
       type: String,
@@ -73,25 +72,18 @@ const SellerSchema = new mongoose.Schema<ISeller>(
     city: { type: String, required: true },
     state: { type: String, required: true },
     pincode: { type: String, required: true },
-    preciseLocation: { type: String, required: true },
+    preciseLocation: { type: String, default: '' },
     serviceRadius: { type: String, enum: ['2km', '5km', '10km'], default: '5km' },
     deliveryType: {
       type: String,
       enum: ['self_delivery', 'pickup_only', 'platform_delivery'],
       default: 'self_delivery',
     },
-    deliveryTimeCommitment: {
-      type: String,
-      enum: ['instant', 'same_day', 'next_day'],
-      default: 'same_day',
-    },
-    openTime: { type: String, required: true },
-    closeTime: { type: String, required: true },
 
     inventoryType: {
       type: String,
-      enum: ['ready_stock', 'made_to_order'],
-      required: true,
+      enum: ['ready_stock', 'made_to_order', ''],
+      default: '',
     },
     acceptingOrders: { type: Boolean, default: true },
     pickupAvailable: { type: Boolean, default: true },

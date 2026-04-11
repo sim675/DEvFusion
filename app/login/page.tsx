@@ -41,17 +41,36 @@ export default function Login() {
       if (!res.ok) {
         throw new Error(data.error || "Something went wrong");
       }
-      
-      // Store user data in localStorage
-      localStorage.setItem("user", JSON.stringify(data.user));
-      
+
       setSuccess(true);
+
+      // If the account is a seller, the API tells us where to redirect
+      const destination = data.redirectTo || "/";
+
+      if (data.role === "seller") {
+        // Store seller info in localStorage so the navbar can show the name
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            _id: data.seller._id,
+            name: data.seller.fullName,   // navbar reads .name
+            email: data.seller.email,
+            storeName: data.seller.storeName,
+            sellerStatus: data.seller.sellerStatus,
+            role: "seller",
+          })
+        );
+      } else {
+        // Regular user — store as before
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
       setTimeout(() => {
-        router.push("/");
-      }, 1500);
+        router.push(destination);
+      }, 1000);
       
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +165,7 @@ export default function Login() {
         )}
         
         <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
-          Don't have an account? <Link href="/register" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Sign up</Link>
+          Don't have an account? <Link href="/register/buyer" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Sign up</Link>
         </div>
       </motion.div>
     </div>

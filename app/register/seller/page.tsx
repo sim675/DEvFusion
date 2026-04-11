@@ -8,7 +8,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Clock,
   CreditCard,
   Upload,
   CheckCircle2,
@@ -16,7 +15,6 @@ import {
   ChevronLeft,
   Building2,
   Package,
-  Truck,
   ToggleLeft,
   ToggleRight,
   FileText,
@@ -33,6 +31,10 @@ import {
   ShoppingBag,
   Globe,
   MapPinned,
+  Lock,
+  Eye,
+  EyeOff,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -44,6 +46,8 @@ interface SellerFormData {
   phone: string;
   email: string;
   storeName: string;
+  password: string;
+  confirmPassword: string;
   businessType: string;
   productCategory: string;
   gstNumber: string;
@@ -55,9 +59,6 @@ interface SellerFormData {
   preciseLocation: string;
   serviceRadius: string;
   deliveryTypes: string[];         // multi-select
-  deliveryTimeCommitment: string;
-  openTime: string;
-  closeTime: string;
   inventoryType: string;
   acceptingOrders: boolean;
   pickupAvailable: boolean;
@@ -77,40 +78,39 @@ interface FileState {
 // Constants
 // ─────────────────────────────────────────────────────
 const STEPS = [
-  { label: "Basic Info",   icon: User,       desc: "Name, phone, email" },
-  { label: "Business",     icon: Briefcase,  desc: "Type, category, GST" },
-  { label: "Location",     icon: MapPinned,  desc: "Store & delivery setup" },
-  { label: "Operations",   icon: Package,    desc: "Inventory & availability" },
-  { label: "Bank",         icon: Landmark,   desc: "Payout details" },
-  { label: "Documents",    icon: FileText,   desc: "Identity & bank proof" },
+  { label: "Basic Info", icon: User, desc: "Name, phone, email" },
+  { label: "Business", icon: Briefcase, desc: "Type, category, GST" },
+  { label: "Location", icon: MapPinned, desc: "Store & delivery setup" },
+  { label: "Operations", icon: Package, desc: "Inventory & availability" },
+  { label: "Bank", icon: Landmark, desc: "Payout details" },
+  { label: "Documents", icon: FileText, desc: "Identity & bank proof" },
 ];
 
 const PRODUCT_CATEGORIES = [
-  "Grocery & Supermarket","Pharmacy & Healthcare","Electronics & Gadgets",
-  "Clothing & Fashion","Food & Restaurant","Home & Furniture","Books & Stationery",
-  "Sports & Fitness","Beauty & Personal Care","Automotive","Toys & Games","Other",
+  "Grocery & Supermarket", "Pharmacy & Healthcare", "Electronics & Gadgets",
+  "Clothing & Fashion", "Food & Restaurant", "Home & Furniture", "Books & Stationery",
+  "Sports & Fitness", "Beauty & Personal Care", "Automotive", "Toys & Games", "Other",
 ];
 
 const INDIA_STATES = [
-  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa",
-  "Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala",
-  "Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland",
-  "Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
-  "Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu & Kashmir",
-  "Ladakh","Puducherry","Chandigarh",
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala",
+  "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland",
+  "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+  "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Jammu & Kashmir",
+  "Ladakh", "Puducherry", "Chandigarh",
 ];
 
-const GST_REGEX  = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 
 const initial: SellerFormData = {
   fullName: "", phone: "", email: "", storeName: "",
+  password: "", confirmPassword: "",
   businessType: "", productCategory: "", gstNumber: "", panNumber: "",
   shopAddress: "", city: "", state: "", pincode: "", preciseLocation: "",
   serviceRadius: "5km",
   deliveryTypes: ["self_delivery"],
-  deliveryTimeCommitment: "same_day",
-  openTime: "09:00", closeTime: "21:00",
   inventoryType: "", acceptingOrders: true, pickupAvailable: true,
   accountHolderName: "", bankName: "", accountNumber: "", ifscCode: "",
 };
@@ -188,11 +188,10 @@ function PillOption({
           key={opt.val}
           type="button"
           onClick={() => onChange(opt.val)}
-          className={`group flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all ${
-            value === opt.val
+          className={`group flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all ${value === opt.val
               ? "border-violet-500/60 bg-violet-500/15 text-white"
               : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20 hover:text-slate-200"
-          }`}
+            }`}
         >
           <span className="text-sm font-semibold leading-none">{opt.label}</span>
           {opt.desc && <span className="text-[11px] mt-1 opacity-70 leading-none">{opt.desc}</span>}
@@ -219,11 +218,10 @@ function MultiCard({
             key={val}
             type="button"
             onClick={() => onToggle(val)}
-            className={`relative flex items-start gap-3 px-4 py-3 rounded-xl border transition-all min-w-[160px] ${
-              active
+            className={`relative flex items-start gap-3 px-4 py-3 rounded-xl border transition-all min-w-[160px] ${active
                 ? "border-violet-500/60 bg-violet-500/15 text-white"
                 : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20 hover:text-slate-200"
-            }`}
+              }`}
           >
             <Icon className={`h-5 w-5 flex-shrink-0 mt-0.5 ${active ? "text-violet-400" : "text-slate-500"}`} />
             <div className="text-left">
@@ -257,11 +255,10 @@ function BusinessCard({
           key={opt.val}
           type="button"
           onClick={() => onChange(opt.val)}
-          className={`text-left p-4 rounded-xl border transition-all ${
-            value === opt.val
+          className={`text-left p-4 rounded-xl border transition-all ${value === opt.val
               ? "border-violet-500/60 bg-violet-500/10 text-white"
               : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"
-          }`}
+            }`}
         >
           <p className="text-sm font-semibold">{opt.label}</p>
           <p className="text-[11px] mt-0.5 opacity-70">{opt.desc}</p>
@@ -279,6 +276,9 @@ function Step1({ data, onChange, errors }: {
   onChange: (k: keyof SellerFormData, v: string) => void;
   errors: Partial<Record<string, string>>;
 }) {
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   return (
     <div className="space-y-5">
       <Field label="Full Name" required error={errors.fullName}>
@@ -297,6 +297,48 @@ function Step1({ data, onChange, errors }: {
         <TextInput icon={Store} placeholder="e.g. Fresh Bazar Kolkata" value={data.storeName}
           onChange={(e) => onChange("storeName", e.target.value)} />
       </Field>
+
+      {/* ── Password Section ── */}
+      <div className="border-t border-white/5 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-violet-400/80 mb-4 flex items-center gap-2">
+          <Lock className="h-3.5 w-3.5" /> Set Login Password
+        </p>
+        <div className="space-y-4">
+          <Field label="Password" required error={errors.password}
+            hint="At least 8 characters">
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+              <input
+                type={showPwd ? "text" : "password"}
+                placeholder="Create a strong password"
+                value={data.password}
+                onChange={(e) => onChange("password", e.target.value)}
+                className="w-full pl-10 pr-10 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/50 focus:bg-violet-500/5 transition-all"
+              />
+              <button type="button" tabIndex={-1} onClick={() => setShowPwd(p => !p)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </Field>
+          <Field label="Confirm Password" required error={errors.confirmPassword}>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+              <input
+                type={showConfirm ? "text" : "password"}
+                placeholder="Re-enter your password"
+                value={data.confirmPassword}
+                onChange={(e) => onChange("confirmPassword", e.target.value)}
+                className="w-full pl-10 pr-10 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/50 focus:bg-violet-500/5 transition-all"
+              />
+              <button type="button" tabIndex={-1} onClick={() => setShowConfirm(p => !p)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </Field>
+        </div>
+      </div>
     </div>
   );
 }
@@ -316,9 +358,9 @@ function Step2({ data, onChange, errors }: {
           value={data.businessType}
           onChange={(v) => onChange("businessType", v)}
           options={[
-            { val: "individual",      label: "Individual",      desc: "Personal seller, no registration" },
+            { val: "individual", label: "Individual", desc: "Personal seller, no registration" },
             { val: "sole_proprietor", label: "Sole Proprietor", desc: "Single-owner registered business" },
-            { val: "shop_owner",      label: "Shop Owner",      desc: "Physical store with registration" },
+            { val: "shop_owner", label: "Shop Owner", desc: "Physical store with registration" },
           ]}
         />
       </Field>
@@ -397,14 +439,14 @@ function Step3({ data, onChange, onDeliveryToggle, errors }: {
       </div>
 
       {/* ── Precise Location ── */}
-      <Field label="Precise Location" required error={errors.preciseLocation}
+      <Field label="Precise Location" error={errors.preciseLocation}
         hint="Paste a Google Maps share link, or enter lat,long — e.g. 22.5726, 88.3639">
         <div className="relative">
           <MapPinned className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500 pointer-events-none" />
           <textarea
             rows={2}
             className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-violet-500/50 focus:bg-violet-500/5 transition-all resize-none"
-            placeholder="https://maps.app.goo.gl/... or 22.5726, 88.3639"
+            placeholder="https://maps.app.goo.gl/... or 22.5726, 88.3639 (optional)"
             value={data.preciseLocation}
             onChange={(e) => onChange("preciseLocation", e.target.value)}
           />
@@ -423,8 +465,8 @@ function Step3({ data, onChange, onDeliveryToggle, errors }: {
           value={data.serviceRadius}
           onChange={(v) => onChange("serviceRadius", v)}
           options={[
-            { val: "2km",  label: "2 km",  desc: "Ultra-local · doorstep" },
-            { val: "5km",  label: "5 km",  desc: "Neighbourhood · most popular" },
+            { val: "2km", label: "2 km", desc: "Ultra-local · doorstep" },
+            { val: "5km", label: "5 km", desc: "Neighbourhood · most popular" },
             { val: "10km", label: "10 km", desc: "City zone · wider reach" },
           ]}
         />
@@ -442,9 +484,9 @@ function Step3({ data, onChange, onDeliveryToggle, errors }: {
           values={data.deliveryTypes}
           onToggle={onDeliveryToggle}
           options={[
-            { val: "self_delivery",      label: "Self Delivery",      desc: "You deliver orders yourself",          icon: Bike },
-            { val: "pickup_only",        label: "Pickup Only",         desc: "Customer collects from your shop",     icon: ShoppingBag },
-            { val: "platform_delivery",  label: "Platform Delivery",   desc: "VendorHub logistics (coming soon)",    icon: Globe },
+            { val: "self_delivery", label: "Self Delivery", desc: "You deliver orders yourself", icon: Bike },
+            { val: "pickup_only", label: "Pickup Only", desc: "Customer collects from your shop", icon: ShoppingBag },
+            { val: "platform_delivery", label: "Platform Delivery", desc: "VendorHub logistics (coming soon)", icon: Globe },
           ]}
         />
         {data.deliveryTypes.length === 0 && (
@@ -452,46 +494,6 @@ function Step3({ data, onChange, onDeliveryToggle, errors }: {
             <AlertCircle className="h-3 w-3" /> Select at least one delivery type.
           </p>
         )}
-      </div>
-
-      {/* ── Delivery Time Commitment ── */}
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-3">
-          Delivery Time Commitment <span className="text-violet-400">*</span>
-        </p>
-        <PillOption
-          value={data.deliveryTimeCommitment}
-          onChange={(v) => onChange("deliveryTimeCommitment", v)}
-          options={[
-            { val: "instant",   label: "Instant",   desc: "Within 1–2 hrs" },
-            { val: "same_day",  label: "Same Day",   desc: "Before midnight" },
-            { val: "next_day",  label: "Next Day",   desc: "Within 24 hrs" },
-          ]}
-        />
-      </div>
-
-      {/* ── Operating Hours ── */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Opening Time" required error={errors.openTime}>
-          <div className="relative">
-            <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-            <input type="time"
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#12101f] border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
-              value={data.openTime}
-              onChange={(e) => onChange("openTime", e.target.value)}
-            />
-          </div>
-        </Field>
-        <Field label="Closing Time" required error={errors.closeTime}>
-          <div className="relative">
-            <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-            <input type="time"
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#12101f] border border-white/10 text-white text-sm focus:outline-none focus:border-violet-500/50 transition-all"
-              value={data.closeTime}
-              onChange={(e) => onChange("closeTime", e.target.value)}
-            />
-          </div>
-        </Field>
       </div>
     </div>
   );
@@ -508,18 +510,17 @@ function Step4({ data, onChange, onToggle, errors }: {
 }) {
   return (
     <div className="space-y-6">
-      <Field label="Inventory Type" required error={errors.inventoryType}>
+      <Field label="Inventory Type" error={errors.inventoryType}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
-            { val: "ready_stock",   label: "Ready Stock",    desc: "Products available immediately for dispatch" },
-            { val: "made_to_order", label: "Made to Order",  desc: "Prepared fresh after an order is placed" },
+            { val: "ready_stock", label: "Ready Stock", desc: "Products available immediately for dispatch" },
+            { val: "made_to_order", label: "Made to Order", desc: "Prepared fresh after an order is placed" },
           ].map((opt) => (
             <button key={opt.val} type="button" onClick={() => onChange("inventoryType", opt.val)}
-              className={`text-left p-4 rounded-xl border transition-all ${
-                data.inventoryType === opt.val
+              className={`text-left p-4 rounded-xl border transition-all ${data.inventoryType === opt.val
                   ? "border-violet-500/60 bg-violet-500/10 text-white"
                   : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"
-              }`}>
+                }`}>
               <p className="text-sm font-semibold">{opt.label}</p>
               <p className="text-[11px] mt-0.5 opacity-70">{opt.desc}</p>
             </button>
@@ -539,7 +540,7 @@ function Step4({ data, onChange, onToggle, errors }: {
           <button type="button" onClick={() => onToggle(key)} className="flex-shrink-0 transition-colors">
             {data[key]
               ? <ToggleRight className="h-9 w-9 text-violet-400" />
-              : <ToggleLeft  className="h-9 w-9 text-slate-600" />}
+              : <ToggleLeft className="h-9 w-9 text-slate-600" />}
           </button>
         </div>
       ))}
@@ -586,7 +587,7 @@ function Step6({ files, onFileChange, errors }: {
   errors: Partial<Record<string, string>>;
 }) {
   const govtRef = useRef<HTMLInputElement>(null);
-  const bizRef  = useRef<HTMLInputElement>(null);
+  const bizRef = useRef<HTMLInputElement>(null);
   const bankRef = useRef<HTMLInputElement>(null);
   const ACCEPTED = ".jpg,.jpeg,.png,.pdf";
   const MAX_MB = 5;
@@ -598,7 +599,7 @@ function Step6({ files, onFileChange, errors }: {
     hint: string;
   }) {
     const file = files[fileKey];
-    const err  = errors[fileKey];
+    const err = errors[fileKey];
     const handlePick = (e: ChangeEvent<HTMLInputElement>) => {
       const f = e.target.files?.[0] ?? null;
       if (f && f.size > MAX_MB * 1024 * 1024) { onFileChange(fileKey, null); return; }
@@ -610,9 +611,8 @@ function Step6({ files, onFileChange, errors }: {
           {label}{required && <span className="text-violet-400 ml-1">*</span>}
         </label>
         <button type="button" onClick={() => inputRef.current?.click()}
-          className={`w-full rounded-xl border-2 border-dashed p-5 text-center transition-all ${
-            file ? "border-violet-500/40 bg-violet-500/5" : "border-white/10 bg-white/[0.02] hover:border-white/20"
-          }`}>
+          className={`w-full rounded-xl border-2 border-dashed p-5 text-center transition-all ${file ? "border-violet-500/40 bg-violet-500/5" : "border-white/10 bg-white/[0.02] hover:border-white/20"
+            }`}>
           {file ? (
             <div className="flex items-center justify-center gap-2 text-violet-400">
               <FileText className="h-5 w-5" />
@@ -640,9 +640,9 @@ function Step6({ files, onFileChange, errors }: {
           Upload clear, legible documents. Blurry or invalid files will delay verification.
         </p>
       </div>
-      <Box label="Government ID" required fileKey="govtIdFile" inputRef={govtRef} hint="Aadhar Card or PAN Card" />
-      <Box label="Business Proof" fileKey="businessProofFile" inputRef={bizRef}   hint="GST Certificate (optional)" />
-      <Box label="Bank Proof"     required fileKey="bankProofFile" inputRef={bankRef} hint="Cancelled Cheque or Passbook" />
+      <Box label="Government ID" fileKey="govtIdFile" inputRef={govtRef} hint="Aadhar Card or PAN Card (optional)" />
+      <Box label="Business Proof" fileKey="businessProofFile" inputRef={bizRef} hint="GST Certificate (optional)" />
+      <Box label="Bank Proof" fileKey="bankProofFile" inputRef={bankRef} hint="Cancelled Cheque or Passbook (optional)" />
     </div>
   );
 }
@@ -671,7 +671,7 @@ function Sidebar({ step, setStep, completedUpTo }: {
 
       <nav className="space-y-1">
         {STEPS.map(({ label, icon: Icon, desc }, i) => {
-          const done   = i < completedUpTo;
+          const done = i < completedUpTo;
           const active = i === step;
           const locked = i > completedUpTo;
           return (
@@ -680,20 +680,18 @@ function Sidebar({ step, setStep, completedUpTo }: {
               type="button"
               disabled={locked}
               onClick={() => !locked && setStep(i)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all group ${
-                active
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all group ${active
                   ? "bg-violet-500/15 border border-violet-500/30 text-white"
                   : done
-                  ? "hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer"
-                  : "opacity-30 cursor-not-allowed text-slate-600"
-              }`}
+                    ? "hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer"
+                    : "opacity-30 cursor-not-allowed text-slate-600"
+                }`}
             >
               {/* Step icon / check */}
-              <span className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                active ? "bg-violet-500/30 text-violet-300"
-                : done  ? "bg-green-500/15 text-green-400"
-                : "bg-white/5 text-slate-600"
-              }`}>
+              <span className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${active ? "bg-violet-500/30 text-violet-300"
+                  : done ? "bg-green-500/15 text-green-400"
+                    : "bg-white/5 text-slate-600"
+                }`}>
                 {done && !active
                   ? <CheckCircle2 className="h-4 w-4" />
                   : <Icon className="h-4 w-4" />}
@@ -718,10 +716,10 @@ function Sidebar({ step, setStep, completedUpTo }: {
       <div className="mt-auto pt-10">
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-3">
           {[
-            { icon: Zap,     text: "Reach local customers instantly" },
-            { icon: Timer,   text: "Deliver in hours, not days" },
+            { icon: Zap, text: "Reach local customers instantly" },
+            { icon: Timer, text: "Deliver in hours, not days" },
             { icon: BarChart3, text: "Real-time sales analytics" },
-            { icon: Users,   text: "Build community trust" },
+            { icon: Users, text: "Build community trust" },
           ].map(({ icon: Icon, text }) => (
             <div key={text} className="flex items-center gap-2.5 text-slate-500">
               <Icon className="h-3.5 w-3.5 text-violet-500/70 flex-shrink-0" />
@@ -741,10 +739,10 @@ function Sidebar({ step, setStep, completedUpTo }: {
 // MAIN PAGE
 // ─────────────────────────────────────────────────────
 export default function BecomeSellerPage() {
-  const [step, setStep]           = useState(0);
+  const [step, setStep] = useState(0);
   const [completedUpTo, setCompleted] = useState(0);
-  const [form, setForm]           = useState<SellerFormData>(initial);
-  const [files, setFiles]         = useState<FileState>({ govtIdFile: null, businessProofFile: null, bankProofFile: null });
+  const [form, setForm] = useState<SellerFormData>(initial);
+  const [files, setFiles] = useState<FileState>({ govtIdFile: null, businessProofFile: null, bankProofFile: null });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -781,47 +779,39 @@ export default function BecomeSellerPage() {
     const errs: Record<string, string> = {};
 
     if (step === 0) {
-      if (!form.fullName.trim())  errs.fullName  = "Full name is required.";
-      if (!form.phone.trim())     errs.phone     = "Phone number is required.";
-      if (!form.email.trim())     errs.email     = "Email is required.";
+      if (!form.fullName.trim()) errs.fullName = "Full name is required.";
+      if (!form.phone.trim()) errs.phone = "Phone number is required.";
+      if (!form.email.trim()) errs.email = "Email is required.";
       else if (!/^[\w.-]+@[\w.-]+\.\w{2,}$/.test(form.email)) errs.email = "Enter a valid email.";
       if (!form.storeName.trim()) errs.storeName = "Store name is required.";
+      if (!form.password.trim()) errs.password = "Password is required.";
+      else if (form.password.length < 8) errs.password = "Password must be at least 8 characters.";
+      if (!form.confirmPassword.trim()) errs.confirmPassword = "Please confirm your password.";
+      else if (form.password !== form.confirmPassword) errs.confirmPassword = "Passwords do not match.";
     }
 
     if (step === 1) {
-      if (!form.businessType)    errs.businessType    = "Select a business type.";
+      if (!form.businessType) errs.businessType = "Select a business type.";
       if (!form.productCategory) errs.productCategory = "Select a product category.";
       if (form.gstNumber.trim() && !GST_REGEX.test(form.gstNumber.trim()))
         errs.gstNumber = "Invalid GST format. Example: 22AAAAA0000A1Z5";
     }
 
     if (step === 2) {
-      if (!form.shopAddress.trim())    errs.shopAddress    = "Shop address is required.";
-      if (!form.preciseLocation.trim()) errs.preciseLocation = "Precise location is required.";
-      if (!form.city.trim())           errs.city           = "City is required.";
-      if (!form.state)                 errs.state          = "State is required.";
-      if (!form.pincode.trim())        errs.pincode        = "Pincode is required.";
+      if (!form.shopAddress.trim()) errs.shopAddress = "Shop address is required.";
+      if (!form.city.trim()) errs.city = "City is required.";
+      if (!form.state) errs.state = "State is required.";
+      if (!form.pincode.trim()) errs.pincode = "Pincode is required.";
       if (form.deliveryTypes.length === 0) errs.deliveryTypes = "Select at least one delivery type.";
-      if (!form.openTime)              errs.openTime       = "Opening time is required.";
-      if (!form.closeTime)             errs.closeTime      = "Closing time is required.";
-    }
-
-    if (step === 3) {
-      if (!form.inventoryType) errs.inventoryType = "Select an inventory type.";
     }
 
     if (step === 4) {
       if (!form.accountHolderName.trim()) errs.accountHolderName = "Account holder name is required.";
-      if (!form.bankName.trim())          errs.bankName          = "Bank name is required.";
-      if (!form.accountNumber.trim())     errs.accountNumber     = "Account number is required.";
-      if (!form.ifscCode.trim())          errs.ifscCode          = "IFSC code is required.";
+      if (!form.bankName.trim()) errs.bankName = "Bank name is required.";
+      if (!form.accountNumber.trim()) errs.accountNumber = "Account number is required.";
+      if (!form.ifscCode.trim()) errs.ifscCode = "IFSC code is required.";
       else if (!IFSC_REGEX.test(form.ifscCode.trim()))
         errs.ifscCode = "Invalid IFSC format. Example: SBIN0001234";
-    }
-
-    if (step === 5) {
-      if (!files.govtIdFile)  errs.govtIdFile  = "Government ID is required.";
-      if (!files.bankProofFile) errs.bankProofFile = "Bank proof is required.";
     }
 
     setFieldErrors(errs);
@@ -845,19 +835,23 @@ export default function BecomeSellerPage() {
     try {
       const fd = new FormData();
       (Object.keys(form) as (keyof SellerFormData)[]).forEach((k) => {
+        // Don't send confirmPassword to server
+        if (k === "confirmPassword") return;
         if (k === "deliveryTypes") {
           fd.append(k, (form[k] as string[]).join(","));
         } else {
           fd.append(k, String(form[k]));
         }
       });
-      if (files.govtIdFile)       fd.append("govtIdFile",       files.govtIdFile);
+      if (files.govtIdFile) fd.append("govtIdFile", files.govtIdFile);
       if (files.businessProofFile) fd.append("businessProofFile", files.businessProofFile);
-      if (files.bankProofFile)    fd.append("bankProofFile",    files.bankProofFile);
+      if (files.bankProofFile) fd.append("bankProofFile", files.bankProofFile);
 
-      const res  = await fetch("/api/seller/register", { method: "POST", body: fd });
+      const res = await fetch("/api/seller/register", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
+      // Store seller email for status check
+      localStorage.setItem("sellerEmail", form.email);
       setSubmitted(true);
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : "An unexpected error occurred.");
@@ -887,14 +881,20 @@ export default function BecomeSellerPage() {
             <p className="text-amber-400 text-sm font-semibold">⏳ What happens next?</p>
             <ul className="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
               <li>Our team reviews your documents within 24–48 hours.</li>
-              <li>You'll receive an email once approved.</li>
+              <li>You&apos;ll receive an email once approved.</li>
               <li>Your seller dashboard activates after approval.</li>
             </ul>
           </div>
-          <Link href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-sm hover:from-violet-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-500/20">
-            Back to Home
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link href="/"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/15 text-slate-300 font-semibold text-sm hover:bg-white/5 hover:text-white transition-all">
+              Back to Home
+            </Link>
+            <Link href="/seller/status"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-sm hover:from-violet-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-500/20">
+              <Activity className="h-4 w-4" /> Check Status
+            </Link>
+          </div>
         </motion.div>
       </div>
     );
@@ -942,11 +942,10 @@ export default function BecomeSellerPage() {
             <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto pb-6 scrollbar-hide">
               {STEPS.map(({ label }, i) => (
                 <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    i === step ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
-                    : i < step  ? "bg-green-500/10  text-green-400  border-green-500/20"
-                    : "bg-white/5 text-slate-600 border-white/5"
-                  }`}>
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${i === step ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
+                      : i < step ? "bg-green-500/10  text-green-400  border-green-500/20"
+                        : "bg-white/5 text-slate-600 border-white/5"
+                    }`}>
                     {i < step ? <CheckCircle2 className="h-3 w-3" /> : <span className="text-[10px]">{i + 1}</span>}
                     {label}
                   </div>
