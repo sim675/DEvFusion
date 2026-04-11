@@ -17,14 +17,26 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface SellerInfo {
-  fullName: string;
-  email: string;
-  storeName: string;
-  sellerStatus: "pending_verification" | "approved" | "rejected";
-  createdAt: string;
+  fullName?: string;
+  email?: string;
+  storeName?: string;
+  sellerStatus: "none" | "pending_verification" | "approved" | "rejected";
+  createdAt?: string;
 }
 
 const STATUS_CONFIG = {
+  none: {
+    icon: Store,
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500/20",
+    gradientFrom: "from-blue-500",
+    gradientTo: "to-indigo-500",
+    title: "Become a Seller",
+    desc: "You haven't applied to become a seller yet. Start your journey with VendorHub and reach thousands of customers in your local area.",
+    badge: "Not Applied",
+    badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  },
   pending_verification: {
     icon: Clock,
     color: "text-amber-400",
@@ -73,9 +85,9 @@ export default function SellerStatusPage() {
     async function fetchStatus() {
       try {
         const res = await fetch("/api/seller/status");
-        if (res.status === 401) {
-          // Not logged in — redirect to main login
-          router.replace("/login");
+        if (res.status === 401 || res.status === 404) {
+          // Unauthenticated or not found -> hasn't applied
+          setSeller({ sellerStatus: "none" });
           return;
         }
         if (!res.ok) {
@@ -87,7 +99,7 @@ export default function SellerStatusPage() {
 
         // If approved, redirect to seller dashboard after a brief moment
         if (data.sellerStatus === "approved") {
-          setTimeout(() => router.push("/seller/dashboard"), 2500);
+          setTimeout(() => router.push("/seller/dashboard"), 1500);
         }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -164,9 +176,15 @@ export default function SellerStatusPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <p className="text-slate-400 text-sm mb-1">Welcome back,</p>
-            <h1 className="text-2xl font-extrabold text-white">{seller.fullName}</h1>
-            <p className="text-slate-500 text-sm mt-0.5">{seller.storeName}</p>
+            {seller.sellerStatus === "none" ? (
+              <h1 className="text-2xl font-extrabold text-white">Join VendorHub</h1>
+            ) : (
+              <>
+                <p className="text-slate-400 text-sm mb-1">Welcome back,</p>
+                <h1 className="text-2xl font-extrabold text-white">{seller.fullName}</h1>
+                <p className="text-slate-500 text-sm mt-0.5">{seller.storeName}</p>
+              </>
+            )}
           </motion.div>
 
           {/* Status card */}
@@ -229,6 +247,12 @@ export default function SellerStatusPage() {
             transition={{ duration: 0.45, delay: 0.2 }}
             className="flex flex-col sm:flex-row gap-3"
           >
+            {seller.sellerStatus === "none" && (
+              <Link href="/register/seller"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold text-sm hover:from-blue-500 hover:to-indigo-500 transition-all shadow-lg shadow-blue-500/20">
+                Start Selling <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
             {seller.sellerStatus === "approved" && (
               <Link href="/seller/dashboard"
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-sm hover:from-violet-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-500/20">
@@ -242,12 +266,14 @@ export default function SellerStatusPage() {
           </motion.div>
 
           {/* Applied on */}
-          <p className="text-center text-xs text-slate-700">
-            Application submitted on{" "}
-            {new Date(seller.createdAt).toLocaleDateString("en-IN", {
-              day: "numeric", month: "long", year: "numeric",
-            })}
-          </p>
+          {seller.createdAt && (
+            <p className="text-center text-xs text-slate-700">
+              Application submitted on{" "}
+              {new Date(seller.createdAt).toLocaleDateString("en-IN", {
+                day: "numeric", month: "long", year: "numeric",
+              })}
+            </p>
+          )}
         </div>
       </main>
     </div>

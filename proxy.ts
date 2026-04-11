@@ -5,7 +5,8 @@ export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Define which routes are meant for authenticated users
-  const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/seller') || path.startsWith('/buyer');
+  const isBuyerRoute = path.startsWith('/dashboard') || path.startsWith('/buyer');
+  const isSellerRoute = path.startsWith('/seller');
 
   // Define public routes (auth routes)
   const isAuthRoute =
@@ -14,17 +15,26 @@ export function proxy(request: NextRequest) {
     path === '/register/buyer' ||
     path === '/register/seller';
 
-  // Read the auth cookie we set during login
-  const token = request.cookies.get('auth_token')?.value || '';
+  // Read the auth cookies
+  const authToken = request.cookies.get('auth_token')?.value || '';
+  const sellerToken = request.cookies.get('seller_token')?.value || '';
 
-  // 1. If trying to access a protected route without a token, redirect to Login
-  if (isProtectedRoute && !token) {
+  // 1. If trying to access a protected route without appropriate token, redirect to Login
+  if (isBuyerRoute && !authToken) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+  if (isSellerRoute && !sellerToken) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // 2. If trying to access an auth route (login/register) WITH a token, redirect to Home/Dashboard
-  if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL('/', request.url));
+  // 2. If trying to access an auth route (login/register) WITH a token, redirect to proper Dashboard
+  if (isAuthRoute) {
+    if (sellerToken) {
+      return NextResponse.redirect(new URL('/seller/dashboard', request.url));
+    }
+    if (authToken) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
   }
 
   // Continue normally if none of the conditions apply
