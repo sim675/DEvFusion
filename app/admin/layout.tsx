@@ -38,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch (_) {}
     finally {
       localStorage.removeItem("user");
-      router.push("/login");
+      router.push("/");
     }
   };
 

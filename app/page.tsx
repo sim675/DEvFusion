@@ -204,7 +204,7 @@ export default function Home() {
 
   const openAddressModal = () => {
     if (!user) {
-      router.push("/login"); // Prompt login to manage addresses
+      router.push("/");
       return;
     }
     setModalView(addresses.length > 0 ? "list" : "form");
@@ -249,7 +249,7 @@ export default function Home() {
       localStorage.removeItem("user");
       setUser(null);
       setIsLoggingOut(false);
-      router.push("/login");
+      router.push("/");
     }
   };
 

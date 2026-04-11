@@ -101,7 +101,7 @@ export default function SellerStatusPage() {
   const handleLogout = async () => {
     await fetch("/api/seller/logout", { method: "POST" });
     localStorage.removeItem("user");
-    router.push("/login");
+    router.push("/");
   };
 
   if (loading) {
