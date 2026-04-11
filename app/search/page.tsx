@@ -44,6 +44,7 @@ type Product = {
   location: { city: string; state: string; pincode: string };
   vendor?: { storeName: string; city: string; state: string };
   category?: { name: string; slug: string; icon: string };
+  vendorId?: string;
 };
 
 type SearchResponse = {
@@ -80,7 +81,41 @@ const StarRating = ({ rating }: { rating: number }) => (
 // ────────────────────────────────────────────────────────────────────────────
 // Product Card
 // ────────────────────────────────────────────────────────────────────────────
-const ProductCard = ({ product, index }: { product: Product; index: number }) => (
+const ProductCard = ({ product, index }: { product: Product; index: number }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!product.vendorId && !product.vendor) {
+        alert("Cannot add item, missing vendor details.");
+        return;
+    }
+    setIsAdding(true);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product._id,
+          vendorId: product.vendorId,
+          quantity: 1,
+          price: product.price,
+          image: product.mainImage || (product.images && product.images[0]) || ""
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add to cart");
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -175,11 +210,12 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
           </span>
         </div>
         <button
-          disabled={product.stock === 0}
+          onClick={handleAddToCart}
+          disabled={product.stock === 0 || isAdding || added}
           className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ShoppingCart className="h-3.5 w-3.5" />
-          Add
+          {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
+          {isAdding ? "Wait" : added ? "Added" : "Add"}
         </button>
       </div>
 
@@ -192,7 +228,8 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
       )}
     </div>
   </motion.div>
-);
+  );
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // Main Search Page (inner — reads searchParams)

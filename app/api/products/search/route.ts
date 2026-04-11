@@ -214,6 +214,7 @@ export async function GET(req: NextRequest) {
               distanceMeters: 1,
               score: 1,
               vendor: 1,
+              vendorId: 1,
               category: 1,
               deliveryTime: 1,
               pickupAvailable: 1,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Star, MapPin, Store, Truck, Clock, ShieldCheck, RefreshCcw, PackageCheck } from "lucide-react";
 
 interface ProductInfoProps {
@@ -9,6 +10,34 @@ interface ProductInfoProps {
 }
 
 export default function ProductInfo({ product, seller, reviewStats }: ProductInfoProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  const handleAddToCart = async () => {
+    setIsAdding(true);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product._id,
+          vendorId: product.vendorId || seller._id,
+          quantity: 1,
+          price: product.price,
+          image: product.mainImage || (product.images && product.images[0]) || ""
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add to cart");
+      setAdded(true);
+      setTimeout(() => setAdded(false), 3000);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   const discountPercent = product.mrp 
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100) 
     : 0;
@@ -120,8 +149,12 @@ export default function ProductInfo({ product, seller, reviewStats }: ProductInf
 
       {/* CTA Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 pt-4">
-        <button className="flex-1 px-8 py-4 bg-white text-black font-black rounded-2xl hover:bg-slate-200 transition-all active:scale-95">
-          ADD TO CART
+        <button 
+          onClick={handleAddToCart}
+          disabled={isAdding || added}
+          className="flex-1 px-8 py-4 bg-white text-black font-black rounded-2xl hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50"
+        >
+          {isAdding ? "ADDING..." : added ? "ADDED TO CART!" : "ADD TO CART"}
         </button>
         <button className="flex-1 px-8 py-4 bg-violet-600 text-white font-black rounded-2xl hover:bg-violet-700 shadow-xl shadow-violet-500/20 transition-all active:scale-95">
           BUY NOW
