@@ -7,12 +7,18 @@ export interface IProduct extends Document {
   name: string;
   description: string;
   price: number;
+  category: string;
   categoryId: mongoose.Types.ObjectId;
-  vendorId: mongoose.Types.ObjectId;
+  subcategory?: string;
+  vendorId: mongoose.Types.ObjectId; // Existing vendorId
+  sellerId?: mongoose.Types.ObjectId; // Alias for consistency with request
   images: string[];
+  deliveryTime: "Instant" | "Same Day" | "Next Day";
+  stock: number;
+  availability: boolean;
+  pickupAvailable: boolean;
   tags: string[];
   keywords: string[];
-  stock: number;
   rating: number;
   numReviews: number;
   location: {
@@ -49,10 +55,17 @@ const ProductSchema = new Schema<IProduct>(
       required: [true, "Product price is required"],
       min: [0, "Price cannot be negative"],
     },
+    category: {
+      type: String,
+      required: [true, "Category name is required"],
+    },
     categoryId: {
       type: Schema.Types.ObjectId,
       ref: "Category",
       required: [true, "Category ID is required"],
+    },
+    subcategory: {
+      type: String,
     },
     vendorId: {
       type: Schema.Types.ObjectId,
@@ -63,6 +76,25 @@ const ProductSchema = new Schema<IProduct>(
       type: [String],
       default: [],
     },
+    deliveryTime: {
+      type: String,
+      enum: ["Instant", "Same Day", "Next Day"],
+      default: "Same Day",
+    },
+    stock: {
+      type: Number,
+      required: [true, "Stock count is required"],
+      default: 0,
+      min: [0, "Stock cannot be negative"],
+    },
+    availability: {
+      type: Boolean,
+      default: true,
+    },
+    pickupAvailable: {
+      type: Boolean,
+      default: false,
+    },
     tags: {
       type: [String],
       default: [],
@@ -72,12 +104,6 @@ const ProductSchema = new Schema<IProduct>(
       type: [String],
       default: [],
       index: true,
-    },
-    stock: {
-      type: Number,
-      required: [true, "Stock count is required"],
-      default: 0,
-      min: [0, "Stock cannot be negative"],
     },
     rating: {
       type: Number,

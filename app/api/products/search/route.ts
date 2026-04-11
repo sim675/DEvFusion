@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import Product from "@/models/Product";
 import Category from "@/models/Category";
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
     const lng = parseFloat(searchParams.get("lng") || "");
     const radius = parseInt(searchParams.get("radius") || "5000", 10); // metres
     const category = searchParams.get("category")?.trim() || "";
+    const subcategory = searchParams.get("subcategory")?.trim() || "";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
     const skip = (page - 1) * limit;
@@ -33,21 +35,26 @@ export async function GET(req: NextRequest) {
     const hasLocation = !isNaN(lat) && !isNaN(lng);
     const hasQuery = q.length > 0;
     const hasCategory = category.length > 0;
+    const hasSubcategory = subcategory.length > 0;
 
-    // Require at least one search parameter
-    if (!hasLocation && !hasQuery && !hasCategory) {
+    // Require at least one search parameter (added subcategory)
+    if (!hasLocation && !hasQuery && !hasCategory && !hasSubcategory) {
       return NextResponse.json(
-        { error: "Provide at least one of: q (keyword), lat+lng (location), or category." },
+        { error: "Provide at least one of: q (keyword), lat+lng (location), category, or subcategory." },
         { status: 400 }
       );
     }
 
     // Resolve category slug → ObjectId (if provided)
     let categoryId: string | null = null;
+    let categoryName: string | null = null;
     if (hasCategory) {
       // Ensure Category model is registered
       await import("@/models/Category");
-      const cat = await Category.findOne({ slug: category, isActive: true }).select("_id").lean();
+      const cat = await Category.findOne({ 
+        $or: [{ slug: category }, { name: category }],
+        isActive: true 
+      }).select("_id name").lean();
       if (!cat) {
         return NextResponse.json(
           { error: `Category "${category}" not found.` },
@@ -55,6 +62,7 @@ export async function GET(req: NextRequest) {
         );
       }
       categoryId = (cat as any)._id.toString();
+      categoryName = (cat as any).name;
     }
 
     // ---------------------------------------------------------------
@@ -62,9 +70,8 @@ export async function GET(req: NextRequest) {
     // ---------------------------------------------------------------
     const pipeline: any[] = [];
 
+    // Stage 1: Initial filtering and location if present
     if (hasLocation) {
-      // MODE A: Hyperlocal search (Proximity prioritized)
-      // $geoNear MUST be the first stage
       pipeline.push({
         $geoNear: {
           near: { type: "Point", coordinates: [lng, lat] },
@@ -74,44 +81,62 @@ export async function GET(req: NextRequest) {
           query: { isActive: true },
         },
       });
-
-      // Match filters (keywords using regex since $text is not allowed after $geoNear)
-      const matchStage: Record<string, any> = {};
-      if (hasQuery) {
-        const regex = new RegExp(q, "i");
-        matchStage.$or = [
-          { name: regex },
-          { tags: { $in: [regex] } },
-          { keywords: { $in: [regex] } },
-          { description: regex },
-        ];
-      }
-      if (categoryId) {
-        matchStage.categoryId = { $oid: categoryId };
-      }
-      if (Object.keys(matchStage).length > 0) {
-        pipeline.push({ $match: matchStage });
-      }
     } else {
-      // MODE B: Keyword/Category search (Relevance prioritized)
       const matchStage: Record<string, any> = { isActive: true };
-
       if (hasQuery) {
-        // $text MUST be in the first match stage if no $geoNear
         matchStage.$text = { $search: q };
       }
-      if (categoryId) {
-        matchStage.categoryId = { $oid: categoryId };
-      }
-
       pipeline.push({ $match: matchStage });
-
       if (hasQuery) {
         pipeline.push({
           $addFields: { score: { $meta: "textScore" } },
         });
       }
     }
+
+    // Stage 2: Filter by Category/Subcategory (if provided)
+    const filterStage: Record<string, any> = {};
+    if (categoryId) {
+      // Try filtering by categoryId (ObjectId) OR category (String name)
+      filterStage.$or = [
+        { categoryId: new mongoose.Types.ObjectId(categoryId) },
+        { category: categoryName }
+      ];
+    }
+    if (hasSubcategory) {
+      filterStage.subcategory = new RegExp(subcategory, "i");
+    }
+    if (hasQuery && hasLocation) {
+      // Text search in proximity mode
+      const regex = new RegExp(q, "i");
+      filterStage.$or = filterStage.$or || [];
+      filterStage.$or.push(
+        { name: regex },
+        { tags: { $in: [regex] } },
+        { keywords: { $in: [regex] } },
+        { description: regex }
+      );
+    }
+    if (Object.keys(filterStage).length > 0) {
+      pipeline.push({ $match: filterStage });
+    }
+
+    // Stage 3: Filter by Seller Status (Must be Approved and Active)
+    pipeline.push({
+      $lookup: {
+        from: "sellers", // Collection name
+        localField: "vendorId",
+        foreignField: "_id",
+        as: "seller_info"
+      }
+    });
+    pipeline.push({ $unwind: "$seller_info" });
+    pipeline.push({
+      $match: {
+        "seller_info.sellerStatus": "approved",
+        "seller_info.acceptingOrders": true
+      }
+    });
 
     // Stage 4 – Count total before pagination (facet)
     pipeline.push({
