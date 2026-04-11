@@ -4,6 +4,8 @@ export interface IUser extends mongoose.Document {
   name: string;
   email: string;
   password?: string;
+  phone?: string;
+  wishlist: mongoose.Types.ObjectId[];
   role: 'buyer' | 'seller' | 'admin';
   createdAt: Date;
   updatedAt: Date;
@@ -27,8 +29,17 @@ const UserSchema = new mongoose.Schema<IUser>(
     },
     password: {
       type: String,
-      // Optional if using OAuth
     },
+    phone: {
+      type: String,
+      default: '',
+    },
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+      },
+    ],
     role: {
       type: String,
       enum: ['buyer', 'seller', 'admin'],

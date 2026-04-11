@@ -1,14 +1,58 @@
 "use client";
 
-import { Star, User, MessageSquare } from "lucide-react";
+import { useState } from "react";
+import { Star, User, MessageSquare, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ReviewsSectionProps {
   productId: string;
   reviews: any[];
   stats: any;
+  onReviewSuccess: () => void;
 }
 
-export default function ReviewsSection({ productId, reviews, stats }: ReviewsSectionProps) {
+export default function ReviewsSection({ productId, reviews, stats, onReviewSuccess }: ReviewsSectionProps) {
+  const [showForm, setShowForm] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) return setError("Please select a rating.");
+    if (!comment.trim()) return setError("Please write a comment.");
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, rating, comment }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit review");
+
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setShowForm(false);
+        setRating(0);
+        setComment("");
+        onReviewSuccess(); // Trigger refresh in parent
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-10">
       <div className="flex flex-col lg:flex-row gap-12">
@@ -33,26 +77,97 @@ export default function ReviewsSection({ productId, reviews, stats }: ReviewsSec
               <p className="text-xs text-slate-500 font-bold uppercase mt-2">{stats.total} ratings</p>
             </div>
             <div className="flex-1 space-y-2">
-              {[5, 4, 3, 2, 1].map((rating) => (
-                <div key={rating} className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-slate-400 w-4">{rating}★</span>
+              {[5, 4, 3, 2, 1].map((r) => (
+                <div key={r} className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-400 w-4">{r}★</span>
                   <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-violet-500 rounded-full"
-                      style={{ width: `${stats.total > 0 ? (stats.breakdown[rating] / stats.total) * 100 : 0}%` }}
+                      style={{ width: `${stats.total > 0 ? ((stats.breakdown[r] || 0) / stats.total) * 100 : 0}%` }}
                     />
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 w-8">
-                    {stats.total > 0 ? Math.round((stats.breakdown[rating] / stats.total) * 100) : 0}%
+                    {stats.total > 0 ? Math.round(((stats.breakdown[r] || 0) / stats.total) * 100) : 0}%
                   </span>
                 </div>
               ))}
             </div>
           </div>
           
-          <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold hover:bg-white/10 transition-all">
-            Write a Review
+          <button 
+            onClick={() => setShowForm(!showForm)}
+            className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+          >
+            {showForm ? "Cancel Review" : "Write a Review"}
           </button>
+
+          {/* Submission Form */}
+          <AnimatePresence>
+            {showForm && (
+              <motion.form
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                onSubmit={handleSubmit}
+                className="space-y-4 pt-4 border-t border-white/5 overflow-hidden"
+              >
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rate Product</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        onMouseEnter={() => setHover(star)}
+                        onMouseLeave={() => setHover(0)}
+                        className="transition-all hover:scale-110 active:scale-95"
+                      >
+                        <Star 
+                           className={`h-6 w-6 ${
+                             (hover || rating) >= star 
+                               ? "text-yellow-400 fill-yellow-400" 
+                               : "text-slate-700"
+                           }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Your Comment</label>
+                  <textarea 
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    required
+                    placeholder="Share your experience with this product..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50 min-h-[100px]"
+                  />
+                </div>
+
+                {error && (
+                   <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" /> {error}
+                   </div>
+                )}
+
+                {success && (
+                   <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-medium flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" /> Review submitted successfully!
+                   </div>
+                )}
+
+                <button 
+                  disabled={isSubmitting || success}
+                  type="submit"
+                  className="w-full py-4 bg-violet-600 text-white font-black rounded-2xl hover:bg-violet-700 transition-all shadow-xl shadow-violet-500/10 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Submit Review"}
+                </button>
+              </motion.form>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Reviews List */}

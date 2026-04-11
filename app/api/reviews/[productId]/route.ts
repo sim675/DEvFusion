@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import mongoose from "mongoose";
-
-// Mock Review model if not exists
-const ReviewSchema = new mongoose.Schema({
-  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  userName: String,
-  rating: { type: Number, required: true, min: 1, max: 5 },
-  comment: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const Review = mongoose.models.Review || mongoose.model("Review", ReviewSchema);
+import Review from "@/models/Review";
 
 export async function GET(
   req: NextRequest,

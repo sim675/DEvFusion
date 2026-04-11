@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Package, Clock, Truck, CheckCircle2, AlertCircle, ShoppingBag } from "lucide-react";
+import { Package, Clock, Truck, CheckCircle2, AlertCircle, ShoppingBag, Printer } from "lucide-react";
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -142,40 +142,83 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                {/* Items */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order ID: {order._id}</p>
-                  </div>
-                  <div className="space-y-4">
-                    {order.items.map((item: any, idx: number) => (
-                      <div key={idx} className="flex gap-4 items-start">
-                        <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex-shrink-0">
-                          <img src={item.image || "/placeholder.jpg"} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <Link href={`/product/${item.productId}`} className="font-bold text-slate-900 dark:text-white hover:text-blue-600 line-clamp-1 transition-colors">
-                            {item.name}
-                          </Link>
-                          {item.brand && <p className="text-xs font-bold text-slate-400 uppercase mt-0.5">{item.brand}</p>}
-                          <p className="text-sm text-slate-500 mt-1">
-                            Qty: {item.quantity} • <span className="font-semibold text-slate-700 dark:text-slate-300">₹{item.price.toLocaleString()}</span>
-                          </p>
-                        </div>
-                        <div className="hidden sm:block text-right">
-                          <a href="#" className="text-sm font-semibold text-blue-600 hover:text-blue-700">Write Review</a>
-                        </div>
+                  {/* Items */}
+                  <div className="p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order ID: {order._id}</p>
+                      
+                      {/* Visual Status Tracker */}
+                      <div className="flex items-center gap-2">
+                        {["Placed", "Preparing", "Out for Delivery", "Delivered"].map((step, sIdx) => {
+                          const statusSequence = ["Placed", "Preparing", "Out for Delivery", "Delivered"];
+                          const currentIdx = statusSequence.indexOf(order.orderStatus);
+                          const isDone = sIdx <= currentIdx;
+                          return (
+                            <div key={sIdx} className="flex items-center">
+                              <div className={`h-2.5 w-2.5 rounded-full ${isDone ? 'bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`} />
+                              {sIdx < 3 && <div className={`h-[2px] w-6 sm:w-8 ${isDone && sIdx < currentIdx ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-800'}`} />}
+                            </div>
+                          );
+                        })}
+                        <span className="ml-2 text-[10px] font-black uppercase text-blue-600 tracking-tighter">
+                          Live Tracking
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
 
-                  {/* Delivery Address Snippet */}
-                  <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 text-sm">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Delivered To</p>
-                    <p className="font-semibold text-slate-900 dark:text-white">{order.deliveryAddress.name}</p>
-                    <p className="text-slate-500 dark:text-slate-400">{order.deliveryAddress.street}, {order.deliveryAddress.city}, {order.deliveryAddress.state} {order.deliveryAddress.pincode}</p>
+                    <div className="space-y-4">
+                      {order.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex gap-4 items-start p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50">
+                          <div className="h-16 w-16 bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex-shrink-0">
+                            <img src={item.image || "/placeholder.jpg"} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/product/${item.productId}`} className="font-bold text-slate-900 dark:text-white hover:text-blue-600 line-clamp-1 transition-colors">
+                              {item.name}
+                            </Link>
+                            {item.brand && <p className="text-xs font-bold text-slate-400 uppercase mt-0.5">{item.brand}</p>}
+                            <p className="text-sm text-slate-500 mt-1">
+                              Qty: {item.quantity} • <span className="font-semibold text-slate-700 dark:text-slate-300">₹{item.price.toLocaleString()}</span>
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-2 items-end">
+                            <button 
+                              onClick={() => window.open(`/api/orders/${order._id}/invoice`, "_blank")}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 hover:text-white hover:bg-violet-600 px-3 py-1.5 rounded-lg border border-violet-100 dark:border-violet-900 transition-all"
+                            >
+                              <Printer className="h-3.5 w-3.5" /> Invoice
+                            </button>
+                            <Link 
+                                href={`/product/${item.productId}#reviews`}
+                                className="text-xs font-bold text-blue-600 hover:text-white hover:bg-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900 transition-all text-center"
+                            >
+                                Write Review
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Delivery Address Snippet */}
+                    <div className="mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/50 text-sm">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                          <Truck className="h-4 w-4" /> Ship-to Details
+                      </p>
+                      <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white">{order.deliveryAddress.name}</p>
+                            <p className="text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                {order.deliveryAddress.street}, {order.deliveryAddress.city}<br/>
+                                {order.deliveryAddress.state} - {order.deliveryAddress.pincode}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Payment Method</p>
+                              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{order.paymentMethod}</p>
+                          </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
               </motion.div>
             ))}
