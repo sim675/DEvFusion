@@ -52,6 +52,26 @@ type Address = {
   isDefault?: boolean;
 };
 
+type HomeProduct = {
+  _id: string;
+  name: string;
+  brand?: string;
+  shortDescription?: string;
+  price: number;
+  discountPrice?: number;
+  mrp?: number;
+  images?: string[];
+  mainImage?: string;
+  stock: number;
+  rating?: number;
+  numReviews?: number;
+  deliveryTime?: string;
+  category?: { name: string; slug: string };
+  vendor?: { storeName: string; city: string; state: string };
+};
+
+const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
+
 const categories = [
   { name: "Fashion", icon: Shirt, slug: "fashion" },
   { name: "Mobiles", icon: Smartphone, slug: "mobiles" },
@@ -84,6 +104,9 @@ export default function Home() {
 
   // --- SEARCH ---
   const [searchQuery, setSearchQuery] = useState("");
+  const [homeProducts, setHomeProducts] = useState<HomeProduct[]>([]);
+  const [homeProductsLoading, setHomeProductsLoading] = useState(true);
+  const [homeProductsError, setHomeProductsError] = useState("");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,6 +256,50 @@ export default function Home() {
       } catch (e) { }
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchHomeProducts() {
+      try {
+        setHomeProductsLoading(true);
+        setHomeProductsError("");
+        const res = await fetch("/api/products?limit=24");
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Failed to load products.");
+        }
+
+        if (!cancelled) {
+          setHomeProducts(data.results || []);
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          setHomeProducts([]);
+          setHomeProductsError(error.message || "Failed to load products.");
+        }
+      } finally {
+        if (!cancelled) {
+          setHomeProductsLoading(false);
+        }
+      }
+    }
+
+    fetchHomeProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const featuredProducts = homeProducts.slice(0, 8);
+  const trendingProducts = homeProducts.slice(8, 16).length > 0 ? homeProducts.slice(8, 16) : homeProducts.slice(0, 8);
+  const dealProducts = homeProducts
+    .filter((product) => (product.mrp ?? product.price) > product.price || (product.discountPrice ?? product.price) < product.price)
+    .slice(0, 8);
+  const spotlightProducts = homeProducts.slice(0, 4);
+  const exploreProducts = homeProducts.slice(4, 12).length > 0 ? homeProducts.slice(4, 12) : homeProducts.slice(0, 8);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -684,76 +751,358 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden px-4 pt-32 pb-20 sm:px-6 lg:px-8">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10" />
-        <div className="relative mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl md:text-6xl lg:text-7xl">
-              Empowering Local Sellers,{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Connecting Nearby Buyers
-              </span>
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-slate-600 dark:text-slate-300 sm:text-xl md:max-w-3xl md:mx-auto">
-              Discover products from local vendors near you with AI-powered
-              recommendations
-            </p>
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-base font-semibold text-white shadow-lg transition-all hover:shadow-xl"
-              >
-                Start Shopping
-              </motion.button>
-              <Link href="/register/seller">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="rounded-full border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-900 shadow-lg transition-all hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+      {/* Landing Page */}
+      <section className="relative overflow-hidden px-4 pt-32 pb-12 sm:px-6 lg:px-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.15),_transparent_35%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.14),_transparent_32%)]" />
+        <div className="relative mx-auto max-w-7xl space-y-10">
+          <div className="grid gap-6 lg:grid-cols-[1.35fr_0.95fr]">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="rounded-[2rem] border border-slate-200/70 bg-white/85 p-8 shadow-xl backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80 sm:p-10"
+            >
+              <div className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                Shop local. Delivered faster.
+              </div>
+              <h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
+                Discover products from sellers near you, all in one marketplace.
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-lg">
+                Browse the latest items added by trusted local sellers, compare prices, and open any product to view full details before you buy.
+              </p>
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  href={featuredProducts.length > 0 ? `/product/${featuredProducts[0]._id}` : "/search"}
+                  className="inline-flex items-center justify-center rounded-full bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700"
+                >
+                  Shop Latest Products
+                </Link>
+                <Link
+                  href="/register/seller"
+                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-7 py-3.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
                 >
                   Become a Seller
-                </motion.button>
+                </Link>
+              </div>
+              <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {[
+                  { label: "Products Live", value: `${homeProducts.length}+` },
+                  { label: "Local Stores", value: "Trusted" },
+                  { label: "Delivery", value: "Same Day" },
+                  { label: "Experience", value: "Easy Buy" },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">{item.value}</p>
+                    <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2"
+            >
+              {(homeProductsLoading ? Array.from({ length: 4 }) : spotlightProducts).map((product: any, index) => (
+                homeProductsLoading ? (
+                  <div
+                    key={`skeleton-${index}`}
+                    className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"
+                  >
+                    <div className="aspect-[4/3] animate-pulse bg-slate-200 dark:bg-slate-800" />
+                    <div className="space-y-3 p-4">
+                      <div className="h-3 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    key={product._id}
+                    href={`/product/${product._id}`}
+                    className="group overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-lg transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900"
+                  >
+                    <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 to-blue-50 dark:from-slate-800 dark:to-slate-900">
+                      {product.mainImage || product.images?.[0] ? (
+                        <img
+                          src={product.mainImage || product.images?.[0]}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <ShoppingBag className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                        {product.category?.name || "Latest"}
+                      </p>
+                      <h3 className="mt-1 line-clamp-1 text-sm font-semibold text-slate-900 dark:text-white">
+                        {product.name}
+                      </h3>
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-600 dark:text-slate-400">
+                        {product.shortDescription || "Open product to view full details."}
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
+                        {formatPrice(product.price)}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              ))}
+            </motion.div>
+          </div>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80 sm:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">Fresh From Local Sellers</h2>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  Newly added products from sellers on VendorHub. Click any product to open its full detail page.
+                </p>
+              </div>
+              <Link href="/search" className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                View all products
               </Link>
             </div>
-          </motion.div>
 
-          {/* Floating Card Preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {[
-              { name: "Fresh Organic Produce", price: "$12.99", vendor: "Local Farm" },
-              { name: "Handcrafted Jewelry", price: "$45.00", vendor: "Artisan Studio" },
-              { name: "Homemade Cookies", price: "$8.50", vendor: "Sweet Treats" },
-            ].map((product, index) => (
-              <motion.div
-                key={index}
-                whileHover={{ y: -8 }}
-                className="rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-800"
+            {homeProductsError ? (
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                {homeProductsError}
+              </div>
+            ) : (
+              <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {(homeProductsLoading ? Array.from({ length: 8 }) : featuredProducts).map((product: any, index) =>
+                  homeProductsLoading ? (
+                    <div key={`featured-skeleton-${index}`} className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                      <div className="aspect-[4/3] animate-pulse bg-slate-200 dark:bg-slate-800" />
+                      <div className="space-y-3 p-4">
+                        <div className="h-3 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                        <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                        <div className="h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                        <div className="h-5 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      </div>
+                    </div>
+                  ) : (
+                    <Link
+                      key={product._id}
+                      href={`/product/${product._id}`}
+                      className="group overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900"
+                    >
+                      <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 to-blue-50 dark:from-slate-800 dark:to-slate-900">
+                        {product.mainImage || product.images?.[0] ? (
+                          <img
+                            src={product.mainImage || product.images?.[0]}
+                            alt={product.name}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <ShoppingBag className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                            {product.category?.name || "General"}
+                          </p>
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${product.stock > 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300"}`}>
+                            {product.stock > 0 ? "In Stock" : "Out of Stock"}
+                          </span>
+                        </div>
+                        <h3 className="mt-2 line-clamp-1 text-sm font-semibold text-slate-900 dark:text-white">
+                          {product.name}
+                        </h3>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-400">
+                          {product.shortDescription || "View this product for full details."}
+                        </p>
+                        <div className="mt-3 flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">{formatPrice(product.price)}</p>
+                            {(product.mrp ?? product.price) > product.price && (
+                              <p className="text-xs text-slate-400 line-through">{formatPrice(product.mrp)}</p>
+                            )}
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                            Open <ExternalLink className="h-3.5 w-3.5" />
+                          </span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="truncate">{product.vendor?.storeName || "VendorHub Seller"}</span>
+                          <span>{product.deliveryTime || "Same Day"}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                )}
+              </div>
+            )}
+          </section>
+
+          <div className="grid gap-8 lg:grid-cols-2">
+            {[{
+              title: "Trending Near Buyers",
+              subtitle: "Popular recent products from seller listings",
+              products: trendingProducts,
+            }, {
+              title: "Best Deals",
+              subtitle: "Value picks based on current seller pricing",
+              products: dealProducts.length > 0 ? dealProducts : featuredProducts,
+            }].map((section) => (
+              <section
+                key={section.title}
+                className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80"
               >
-                <div className="mb-4 h-32 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900" />
-                <h3 className="font-semibold text-slate-900 dark:text-white">
-                  {product.name}
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {product.vendor}
-                </p>
-                <p className="mt-2 text-lg font-bold text-blue-600 dark:text-blue-400">
-                  {product.price}
-                </p>
-              </motion.div>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{section.title}</h2>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{section.subtitle}</p>
+                  </div>
+                  <Link href="/search" className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                    Shop more
+                  </Link>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  {(homeProductsLoading ? Array.from({ length: 4 }) : section.products.slice(0, 4)).map((product: any, index) =>
+                    homeProductsLoading ? (
+                      <div key={`${section.title}-skeleton-${index}`} className="flex gap-4 rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
+                        <div className="h-20 w-20 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                        <div className="flex-1 space-y-3 py-2">
+                          <div className="h-3 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                          <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                          <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                        </div>
+                      </div>
+                    ) : (
+                      <Link
+                        key={product._id}
+                        href={`/product/${product._id}`}
+                        className="flex gap-4 rounded-2xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:border-blue-900 dark:hover:bg-slate-950/40"
+                      >
+                        <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 dark:from-slate-800 dark:to-slate-900">
+                          {product.mainImage || product.images?.[0] ? (
+                            <img
+                              src={product.mainImage || product.images?.[0]}
+                              alt={product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <ShoppingBag className="h-7 w-7 text-slate-300 dark:text-slate-700" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                            {product.brand || product.category?.name || "Seller Product"}
+                          </p>
+                          <h3 className="mt-1 line-clamp-1 text-sm font-semibold text-slate-900 dark:text-white">{product.name}</h3>
+                          <p className="mt-1 line-clamp-2 text-xs text-slate-600 dark:text-slate-400">
+                            {product.shortDescription || `${product.vendor?.storeName || "Local seller"} on VendorHub`}
+                          </p>
+                          <div className="mt-2 flex items-center justify-between gap-3">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{formatPrice(product.price)}</span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">{product.vendor?.storeName || "VendorHub Seller"}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  )}
+                </div>
+              </section>
             ))}
-          </motion.div>
+          </div>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80 sm:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">More Products To Explore</h2>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  More seller-added products with images, pricing, delivery, and store details.
+                </p>
+              </div>
+              <Link href="/search" className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                Browse all
+              </Link>
+            </div>
+
+            <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {(homeProductsLoading ? Array.from({ length: 6 }) : exploreProducts.slice(0, 6)).map((product: any, index) =>
+                homeProductsLoading ? (
+                  <div key={`explore-skeleton-${index}`} className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <div className="aspect-[16/10] animate-pulse bg-slate-200 dark:bg-slate-800" />
+                    <div className="space-y-3 p-5">
+                      <div className="h-3 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-5 w-4/5 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-5 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    key={product._id}
+                    href={`/product/${product._id}`}
+                    className="group overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900"
+                  >
+                    <div className="aspect-[16/10] overflow-hidden bg-gradient-to-br from-slate-100 to-blue-50 dark:from-slate-800 dark:to-slate-900">
+                      {product.mainImage || product.images?.[0] ? (
+                        <img
+                          src={product.mainImage || product.images?.[0]}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <ShoppingBag className="h-12 w-12 text-slate-300 dark:text-slate-700" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                          {product.category?.name || product.brand || "Seller Product"}
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {product.deliveryTime || "Same Day"}
+                        </span>
+                      </div>
+                      <h3 className="mt-2 line-clamp-1 text-base font-semibold text-slate-900 dark:text-white">
+                        {product.name}
+                      </h3>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                        {product.shortDescription || "Click to view complete product details, seller info, and buying options."}
+                      </p>
+                      <div className="mt-4 flex items-end justify-between gap-4">
+                        <div>
+                          <p className="text-xl font-bold text-slate-900 dark:text-white">
+                            {formatPrice(product.price)}
+                          </p>
+                          {(product.mrp ?? product.price) > product.price && (
+                            <p className="text-xs text-slate-400 line-through">{formatPrice(product.mrp)}</p>
+                          )}
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-semibold ${product.stock > 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300"}`}>
+                          {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                        <span className="truncate">{product.vendor?.storeName || "VendorHub Seller"}</span>
+                        <span>{product.vendor?.city || "Local"}</span>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              )}
+            </div>
+          </section>
         </div>
       </section>
 
@@ -893,137 +1242,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Role-Based Section */}
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-              Built for Everyone
-            </h2>
-            <p className="mt-4 text-lg text-slate-600 dark:text-slate-300">
-              Whether you're buying, selling, or managing
-            </p>
-          </motion.div>
-
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                icon: User,
-                title: "Buyer",
-                description:
-                  "Shop easily with smart filters, real-time tracking, and secure payments",
-                color: "from-green-500 to-emerald-500",
-              },
-              {
-                icon: TrendingUp,
-                title: "Seller",
-                description:
-                  "Manage products, track orders, and grow your revenue with analytics",
-                color: "from-blue-500 to-cyan-500",
-              },
-              {
-                icon: Shield,
-                title: "Admin",
-                description:
-                  "Control the platform, monitor performance, and access detailed analytics",
-                color: "from-purple-500 to-pink-500",
-              },
-            ].map((role, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.03 }}
-                className="rounded-2xl bg-white p-8 shadow-lg transition-all dark:bg-slate-800"
-              >
-                <div className={`mb-4 inline-flex rounded-2xl bg-gradient-to-br ${role.color} p-4 text-white`}>
-                  <role.icon className="h-8 w-8" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  {role.title}
-                </h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-400">
-                  {role.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* AI Highlight Section */}
-      <section className="relative overflow-hidden px-4 py-20 sm:px-6 lg:px-8">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20" />
-        <div className="relative mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <div className="mb-4 inline-flex rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2 text-sm font-semibold text-white">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Powered by Smart AI
-            </div>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-              Intelligence at Your Fingertips
-            </h2>
-            <p className="mt-4 text-lg text-slate-600 dark:text-slate-300">
-              Our AI makes shopping smarter and selling easier
-            </p>
-          </motion.div>
-
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                icon: Sparkles,
-                title: "Personalized Recommendations",
-                description:
-                  "AI learns your preferences to suggest products you'll love",
-              },
-              {
-                icon: Search,
-                title: "Smart Search",
-                description:
-                  "Fuzzy matching and intelligent search find what you need instantly",
-              },
-              {
-                icon: DollarSign,
-                title: "Price Suggestions",
-                description:
-                  "Get competitive pricing insights to maximize your sales",
-              },
-            ].map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.05 }}
-                className="rounded-2xl bg-white/80 backdrop-blur-sm p-8 shadow-xl dark:bg-slate-800/80"
-              >
-                <div className="mb-4 inline-flex rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 p-4 text-white">
-                  <feature.icon className="h-8 w-8" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  {feature.title}
-                </h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-400">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="px-4 py-20 sm:px-6 lg:px-8">
