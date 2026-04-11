@@ -1,6 +1,7 @@
 "use client";
 
-import { X, CheckCircle2, XCircle, FileText, Image as ImageIcon } from "lucide-react";
+import { useState } from "react";
+import { X, CheckCircle2, XCircle, FileText, Image as ImageIcon, Eye, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SellerModalProps {
@@ -12,7 +13,16 @@ interface SellerModalProps {
 }
 
 export default function SellerModal({ isOpen, onClose, seller, onUpdateStatus, isUpdating }: SellerModalProps) {
+  const [viewingFile, setViewingFile] = useState<string | null>(null);
+
   if (!isOpen || !seller) return null;
+
+  // Helper to ensure file links work if they are older mock paths
+  const getFileUrl = (url: string) => {
+    if (!url) return "#";
+    if (url.startsWith("/")) return url;
+    return `/uploads/${url}`;
+  };
 
   return (
     <AnimatePresence>
@@ -25,12 +35,27 @@ export default function SellerModal({ isOpen, onClose, seller, onUpdateStatus, i
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/50">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Seller Application</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">ID: {seller._id}</p>
-            </div>
+            {viewingFile ? (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setViewingFile(null)}
+                  className="p-2 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">File Viewer</h2>
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Seller Application</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">ID: {seller._id}</p>
+              </div>
+            )}
             <button
-              onClick={onClose}
+              onClick={() => {
+                setViewingFile(null);
+                onClose();
+              }}
               className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors"
             >
               <X className="h-5 w-5" />
@@ -38,7 +63,25 @@ export default function SellerModal({ isOpen, onClose, seller, onUpdateStatus, i
           </div>
 
           {/* Body */}
-          <div className="p-6 overflow-y-auto max-h-[60vh] space-y-8">
+          {viewingFile ? (
+            <div className="p-6 h-[60vh] md:h-[70vh] bg-slate-100/50 dark:bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+              {viewingFile.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img 
+                  src={getFileUrl(viewingFile)} 
+                  alt="Document Viewer" 
+                  className="max-w-full max-h-full rounded-lg object-contain shadow-sm border border-slate-200 dark:border-slate-800"
+                />
+              ) : (
+                <iframe 
+                  src={getFileUrl(viewingFile)} 
+                  className="w-full h-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white"
+                  title="Document Viewer"
+                />
+              )}
+            </div>
+          ) : (
+            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-8">
             {/* Status overview */}
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Current Status:</span>
@@ -132,55 +175,95 @@ export default function SellerModal({ isOpen, onClose, seller, onUpdateStatus, i
                 </h3>
                 <div className="flex flex-col gap-2 mt-2 font-medium text-sm">
                   {seller.govtIdFile ? (
-                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400"><FileText className="h-4 w-4"/> Govt ID: {seller.govtIdFile}</div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-slate-400"/> 
+                      <span className="text-slate-700 dark:text-slate-300">Govt ID: {seller.govtIdFile.split('-').pop() || seller.govtIdFile}</span>
+                      <button onClick={() => setViewingFile(seller.govtIdFile)} className="ml-2 inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg dark:text-blue-400 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 transition-colors">
+                        <Eye className="h-3.5 w-3.5" /> View
+                      </button>
+                    </div>
                   ) : <div className="text-slate-400">Govt ID: N/A</div>}
                   
                   {seller.businessProofFile ? (
-                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400"><FileText className="h-4 w-4"/> Business Proof: {seller.businessProofFile}</div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-slate-400"/> 
+                      <span className="text-slate-700 dark:text-slate-300">Business Proof: {seller.businessProofFile.split('-').pop() || seller.businessProofFile}</span>
+                      <button onClick={() => setViewingFile(seller.businessProofFile)} className="ml-2 inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg dark:text-blue-400 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 transition-colors">
+                        <Eye className="h-3.5 w-3.5" /> View
+                      </button>
+                    </div>
                   ) : <div className="text-slate-400">Business Proof: N/A</div>}
                   
                   {seller.bankProofFile ? (
-                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400"><FileText className="h-4 w-4"/> Bank Proof: {seller.bankProofFile}</div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-slate-400"/> 
+                      <span className="text-slate-700 dark:text-slate-300">Bank Proof: {seller.bankProofFile.split('-').pop() || seller.bankProofFile}</span>
+                      <button onClick={() => setViewingFile(seller.bankProofFile)} className="ml-2 inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg dark:text-blue-400 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 transition-colors">
+                        <Eye className="h-3.5 w-3.5" /> View
+                      </button>
+                    </div>
                   ) : <div className="text-slate-400">Bank Proof: N/A</div>}
                 </div>
               </div>
             </div>
           </div>
+          )}
 
           {/* Footer Actions */}
+          {!viewingFile && (
           <div className="bg-slate-50 dark:bg-slate-950 p-6 flex flex-col sm:flex-row items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              onClick={onClose}
-              disabled={isUpdating}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              Close
-            </button>
             <div className="flex w-full sm:w-auto items-center gap-3">
-              <button
-                onClick={() => onUpdateStatus(seller._id, "rejected")}
-                disabled={isUpdating || seller.sellerStatus === "rejected"}
-                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
-                  seller.sellerStatus === "rejected"
-                    ? "opacity-50 cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
-                    : "text-red-700 bg-red-100 hover:bg-red-200 dark:text-red-300 dark:bg-red-950/40 dark:hover:bg-red-950/60 border border-red-200 dark:border-red-900/50"
-                }`}
-              >
-                <XCircle className="h-4 w-4" /> Reject
-              </button>
-              <button
-                onClick={() => onUpdateStatus(seller._id, "approved")}
-                disabled={isUpdating || seller.sellerStatus === "approved"}
-                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all shadow-sm ${
-                  seller.sellerStatus === "approved"
-                    ? "opacity-50 cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 shadow-none"
-                    : "text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
-                }`}
-              >
-                <CheckCircle2 className="h-4 w-4" /> Approve
-              </button>
+              {seller.sellerStatus === "pending_verification" && (
+                <>
+                  <button
+                    onClick={() => onUpdateStatus(seller._id, "rejected")}
+                    disabled={isUpdating}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all text-red-700 bg-red-100 hover:bg-red-200 dark:text-red-300 dark:bg-red-950/40 dark:hover:bg-red-950/60 border border-red-200 dark:border-red-900/50"
+                  >
+                    <XCircle className="h-4 w-4" /> Reject
+                  </button>
+                  <button
+                    onClick={() => onUpdateStatus(seller._id, "approved")}
+                    disabled={isUpdating}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Approve
+                  </button>
+                </>
+              )}
+
+              {seller.sellerStatus === "approved" && (
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-5 w-5" /> Approved
+                  </span>
+                  <button
+                    onClick={() => onUpdateStatus(seller._id, "pending_verification")}
+                    disabled={isUpdating}
+                    className="text-xs font-semibold px-4 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 transition-colors"
+                  >
+                    Recheck Application
+                  </button>
+                </div>
+              )}
+
+              {seller.sellerStatus === "rejected" && (
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+                    <XCircle className="h-5 w-5" /> Rejected
+                  </span>
+                  <button
+                    onClick={() => onUpdateStatus(seller._id, "pending_verification")}
+                    disabled={isUpdating}
+                    className="text-xs font-semibold px-4 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 transition-colors"
+                  >
+                    Recheck Application
+                  </button>
+                </div>
+              )}
             </div>
           </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>

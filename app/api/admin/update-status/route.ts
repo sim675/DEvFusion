@@ -30,19 +30,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing sellerId or status" }, { status: 400 });
     }
 
-    if (!["approved", "rejected", "pending_verification"].includes(status)) {
+    if (!["approved", "rejected", "pending_verification", "suspended"].includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
     await dbConnect();
 
-    const seller = await Seller.findById(sellerId);
+    const seller = await Seller.findByIdAndUpdate(
+      sellerId,
+      { sellerStatus: status },
+      { new: true }
+    );
+    
     if (!seller) {
       return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
-
-    seller.sellerStatus = status;
-    await seller.save();
 
     return NextResponse.json({ message: "Status updated successfully", seller }, { status: 200 });
   } catch (error: any) {
