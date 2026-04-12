@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { productId, vendorId, quantity, price, image } = body;
 
+    // Check if seller is trying to buy their own product
+    if (user.role === 'seller' && vendorId === user.id) {
+      return NextResponse.json({ error: "As a seller, you cannot purchase your own products." }, { status: 403 });
+    }
+
     if (!productId || !vendorId || price === undefined || !image) {
       return NextResponse.json({ error: "Missing required item fields." }, { status: 400 });
     }
@@ -68,8 +73,9 @@ export async function POST(req: NextRequest) {
 // PUT: Specifically update the quantity of a cart item
 export async function PUT(req: NextRequest) {
   try {
-    const userId = await getUserFromAuth(req);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getUserFromAuth(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = user.id;
 
     await dbConnect();
 
@@ -120,8 +126,9 @@ export async function PUT(req: NextRequest) {
 // DELETE: Remove an item entirely or clear the cart
 export async function DELETE(req: NextRequest) {
   try {
-    const userId = await getUserFromAuth(req);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getUserFromAuth(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = user.id;
 
     await dbConnect();
 

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get("q")?.trim() || "";
     const lat = parseFloat(searchParams.get("lat") || "");
     const lng = parseFloat(searchParams.get("lng") || "");
-    const radius = parseInt(searchParams.get("radius") || "50000", 10); // metres — default 50km
+    const radius = parseInt(searchParams.get("radius") || "5000", 10); // metres — default 5km
     const category = searchParams.get("category")?.trim() || "";
     const subcategory = searchParams.get("subcategory")?.trim() || "";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
@@ -71,16 +71,40 @@ export async function GET(req: NextRequest) {
     // Helper to build the text/keyword filter stage
     const buildTextFilter = () => {
       if (!hasQuery) return null;
-      const regex = new RegExp(q, "i");
+      
+      // Escape regex special characters
+      const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      // Split query into words to support multi-keyword search
+      const words = escapedQuery.split(/\s+/).filter(w => w.length > 0);
+      
+      if (words.length === 0) return null;
+
+      // Create a regex that matches if ANY of the fields contain ALL the words
+      // (This is more inclusive than searching for the exact phrase)
+      const buildWordMatch = (word: string) => {
+        const regex = new RegExp(word, "i");
+        return {
+          $or: [
+            { name: regex },
+            { brand: regex },
+            { subcategory: regex },
+            { tags: regex },
+            { keywords: regex },
+            { shortDescription: regex },
+            { fullDescription: regex },
+          ],
+        };
+      };
+
+      if (words.length === 1) {
+        return buildWordMatch(words[0]);
+      }
+
+      // For multiple words, we want to match products that have ALL words 
+      // somewhere in their indexed fields (similar to $text search behavior)
       return {
-        $or: [
-          { name: regex },
-          { brand: regex },
-          { tags: regex },
-          { keywords: regex },
-          { shortDescription: regex },
-          { fullDescription: regex },
-        ],
+        $and: words.map(word => buildWordMatch(word))
       };
     };
 
@@ -94,7 +118,14 @@ export async function GET(req: NextRequest) {
         ];
       }
       if (hasSubcategory) {
-        filter.subcategory = new RegExp(subcategory, "i");
+        // Search by exact subcategory OR regex (broad match)
+        filter.$and = filter.$and || [];
+        filter.$and.push({
+          $or: [
+            { subcategory: subcategory },
+            { subcategory: new RegExp(subcategory, "i") }
+          ]
+        });
       }
       return Object.keys(filter).length > 0 ? filter : null;
     };
@@ -110,22 +141,38 @@ export async function GET(req: NextRequest) {
         // Add text filter directly into $geoNear.query for efficiency
         const textFilter = buildTextFilter();
         if (textFilter) {
-          geoQuery.$or = textFilter.$or;
+          // Merge textFilter (which could be $or or $and) into geoQuery
+          Object.assign(geoQuery, textFilter);
         }
 
-        // Add category filter into $geoNear.query
+        // Add category/subcategory filter into $geoNear.query
         const catFilter = buildCategoryFilter();
         if (catFilter) {
-          if (catFilter.$or && geoQuery.$or) {
-            // Both text and category have $or — combine with $and
-            geoQuery.$and = [{ $or: geoQuery.$or }, { $or: catFilter.$or }];
-            delete geoQuery.$or;
-          } else if (catFilter.$or) {
-            geoQuery.$or = catFilter.$or;
+          // If we have an existing $or/$and from text search, we MUST use $and to combine
+          if (geoQuery.$or || geoQuery.$and) {
+            const existingFilters = [];
+            if (geoQuery.$or) { existingFilters.push({ $or: geoQuery.$or }); delete geoQuery.$or; }
+            if (geoQuery.$and) { existingFilters.push(...geoQuery.$and); delete geoQuery.$and; }
+            
+            geoQuery.$and = existingFilters;
           }
-          if (catFilter.subcategory) {
-            geoQuery.subcategory = catFilter.subcategory;
-          }
+
+          // Merge catFilter into geoQuery
+          Object.entries(catFilter).forEach(([key, val]) => {
+            if (key === "$and") {
+              geoQuery.$and = geoQuery.$and || [];
+              geoQuery.$and.push(...(val as any[]));
+            } else if (key === "$or") {
+              // If we already have something in $and, push the $or into it
+              if (geoQuery.$and) {
+                geoQuery.$and.push({ $or: val });
+              } else {
+                geoQuery.$or = val;
+              }
+            } else {
+              geoQuery[key] = val;
+            }
+          });
         }
 
         pipeline.push({
@@ -142,16 +189,14 @@ export async function GET(req: NextRequest) {
         // Non-location search
         const matchStage: Record<string, any> = { isActive: true };
         
-        // Use $text index when no location (more efficient than regex)
-        if (hasQuery) {
-          matchStage.$text = { $search: q };
+        // Use regex-based filter for more inclusive search (name, subcategory, brand, etc.)
+        const textFilter = buildTextFilter();
+        if (textFilter) {
+          // Merge textFilter (which could be $or or $and) into matchStage
+          Object.assign(matchStage, textFilter);
         }
         
         pipeline.push({ $match: matchStage });
-        
-        if (hasQuery) {
-          pipeline.push({ $addFields: { score: { $meta: "textScore" } } });
-        }
 
         // Apply category/subcategory filter
         const catFilter = buildCategoryFilter();
@@ -185,9 +230,7 @@ export async function GET(req: NextRequest) {
             {
               $sort: useLocation
                 ? { distanceMeters: 1 }
-                : hasQuery
-                  ? { score: -1 }
-                  : { createdAt: -1 },
+                : { createdAt: -1 },
             },
             { $skip: skip },
             { $limit: limit },

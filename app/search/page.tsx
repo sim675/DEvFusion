@@ -252,11 +252,13 @@ function SearchPageInner() {
   const [error, setError] = useState("");
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "fetching" | "granted" | "denied">("idle");
-  const [radius, setRadius] = useState(5000); // metres 
+  const [radius, setRadius] = useState(5000); // 5 km default for localized search
   const [showFilters, setShowFilters] = useState(false);
   const [locationUsed, setLocationUsed] = useState(true);
   const [outOfRange, setOutOfRange] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") || "");
+  const [subcategoryFilter, setSubcategoryFilter] = useState(searchParams.get("subcategory") || "");
+  const [availableCategories, setAvailableCategories] = useState<any[]>([]);
 
   const LIMIT = 20;
 
@@ -272,6 +274,20 @@ function SearchPageInner() {
       () => setLocationStatus("denied"),
       { timeout: 8000 }
     );
+  }, []);
+
+  // ── Fetch Available Categories ────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchCats() {
+      try {
+        const res = await fetch("/api/categories");
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableCategories(data);
+        }
+      } catch (err) { console.error("Cat fetch failed", err); }
+    }
+    fetchCats();
   }, []);
 
   // ── Fetch results ─────────────────────────────────────────────────────────
@@ -291,6 +307,7 @@ function SearchPageInner() {
           params.set("radius", radius.toString());
         }
         if (categoryFilter) params.set("category", categoryFilter);
+        if (subcategoryFilter) params.set("subcategory", subcategoryFilter);
         params.set("page", pg.toString());
         params.set("limit", LIMIT.toString());
 
@@ -313,14 +330,26 @@ function SearchPageInner() {
         setLoading(false);
       }
     },
-    [userCoords, radius, categoryFilter]
+    [userCoords, radius, categoryFilter, subcategoryFilter]
   );
+
+  // Sync state with searchParams (handles external links like Home -> Search)
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    const cat = searchParams.get("category") || "";
+    const sub = searchParams.get("subcategory") || "";
+    
+    setQuery(q);
+    setInputValue(q);
+    setCategoryFilter(cat);
+    setSubcategoryFilter(sub);
+  }, [searchParams]);
 
   // Run search whenever query, coords, or radius changes
   useEffect(() => {
     setPage(1);
     fetchResults(query, 1);
-  }, [query, userCoords, radius, categoryFilter, fetchResults]);
+  }, [query, userCoords, radius, categoryFilter, subcategoryFilter, fetchResults]);
 
   // Sync page changes
   useEffect(() => {
@@ -336,6 +365,7 @@ function SearchPageInner() {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (categoryFilter) params.set("category", categoryFilter);
+    if (subcategoryFilter) params.set("subcategory", subcategoryFilter);
     router.replace(`/search?${params.toString()}`, { scroll: false });
   };
 
@@ -460,6 +490,71 @@ function SearchPageInner() {
           )}
         </AnimatePresence>
       </header>
+
+      {/* ── Category & Subcategory Navigation ─────────────────────────────── */}
+      <div className="bg-white/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm overflow-x-auto no-scrollbar">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+          {/* Categories */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            <button
+               onClick={() => { setCategoryFilter(""); setSubcategoryFilter(""); }}
+               className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-bold transition-all ${
+                 !categoryFilter 
+                   ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
+                   : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+               }`}
+            >
+              All Categories
+            </button>
+            {availableCategories.map((cat) => (
+              <button
+                key={cat._id}
+                onClick={() => { setCategoryFilter(cat.slug); setSubcategoryFilter(""); }}
+                className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-bold transition-all border ${
+                  categoryFilter === cat.slug 
+                    ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20" 
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Subcategories */}
+          {categoryFilter && (
+            <motion.div 
+              initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1"
+            >
+               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2 shrink-0">Sub:</span>
+               <button
+                 onClick={() => setSubcategoryFilter("")}
+                 className={`whitespace-nowrap px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                   !subcategoryFilter 
+                     ? "bg-slate-900 dark:bg-white text-white dark:text-black" 
+                     : "text-slate-500 hover:text-blue-500"
+                 }`}
+               >
+                 All
+               </button>
+               {availableCategories.find(c => c.slug === categoryFilter)?.subcategories.map((sub: string) => (
+                 <button
+                   key={sub}
+                   onClick={() => setSubcategoryFilter(sub)}
+                   className={`whitespace-nowrap px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                     subcategoryFilter === sub 
+                       ? "bg-slate-900 dark:bg-white text-white dark:text-black shadow-md" 
+                       : "text-slate-500 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                   }`}
+                 >
+                   {sub}
+                 </button>
+               ))}
+            </motion.div>
+          )}
+        </div>
+      </div>
 
       {/* ── Main Content ───────────────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

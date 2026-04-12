@@ -1,19 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Star, MapPin, Store, Truck, Clock, ShieldCheck, RefreshCcw, PackageCheck } from "lucide-react";
+import { Star, MapPin, Store, Truck, Clock, ShieldCheck, RefreshCcw, PackageCheck, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ProductInfoProps {
   product: any;
   seller: any;
   reviewStats: any;
+  setNotification: (notif: { message: string, type: 'success' | 'error' } | null) => void;
 }
 
-export default function ProductInfo({ product, seller, reviewStats }: ProductInfoProps) {
+export default function ProductInfo({ product, seller, reviewStats, setNotification }: ProductInfoProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        // product.vendorId is usually the seller's ID
+        if (user.role === 'seller' && (user._id === (product.vendorId || seller._id))) {
+          setIsOwner(true);
+        }
+      } catch (e) {}
+    }
+  }, [product, seller]);
 
   const handleAddToCart = async () => {
     setIsAdding(true);
@@ -32,9 +48,14 @@ export default function ProductInfo({ product, seller, reviewStats }: ProductInf
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to add to cart");
       setAdded(true);
-      setTimeout(() => setAdded(false), 3000);
+      setNotification({ message: "Added to cart!", type: "success" });
+      setTimeout(() => {
+        setAdded(false);
+        setNotification(null);
+      }, 3000);
     } catch (error: any) {
-      alert(error.message);
+      setNotification({ message: error.message, type: "error" });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setIsAdding(false);
     }
@@ -58,7 +79,8 @@ export default function ProductInfo({ product, seller, reviewStats }: ProductInf
       if (!res.ok) throw new Error(data.error || "Failed to initiate buy now");
       router.push("/cart");
     } catch (error: any) {
-      alert(error.message);
+      setNotification({ message: error.message, type: "error" });
+      setTimeout(() => setNotification(null), 3000);
       setIsAdding(false);
     }
   };
@@ -176,19 +198,34 @@ export default function ProductInfo({ product, seller, reviewStats }: ProductInf
       <div className="flex flex-col sm:flex-row gap-4 pt-4">
         <button 
           onClick={handleAddToCart}
-          disabled={isAdding || added}
-          className="flex-1 px-8 py-4 bg-white text-black font-black rounded-2xl hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50"
+          disabled={isAdding || added || isOwner}
+          className="flex-1 px-8 py-4 bg-white text-black font-black rounded-2xl hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isAdding ? "ADDING..." : added ? "ADDED TO CART!" : "ADD TO CART"}
         </button>
         <button 
           onClick={handleBuyNow}
-          disabled={isAdding}
-          className="flex-1 px-8 py-4 bg-violet-600 text-white font-black rounded-2xl hover:bg-violet-700 shadow-xl shadow-violet-500/20 transition-all active:scale-95 disabled:opacity-50"
+          disabled={isAdding || isOwner}
+          className="flex-1 px-8 py-4 bg-violet-600 text-white font-black rounded-2xl hover:bg-violet-700 shadow-xl shadow-violet-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isAdding ? "PROCESSING..." : "BUY NOW"}
         </button>
       </div>
+
+      {/* Owner Warning Message - Shown below buttons */}
+      {isOwner && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3"
+        >
+          <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-500 uppercase tracking-tight">Owner Restriction</p>
+            <p className="text-xs text-amber-500/80 font-medium">As the owner of this product, you cannot purchase it. Manage this item from your Seller Dashboard.</p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Policies */}
       <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5">

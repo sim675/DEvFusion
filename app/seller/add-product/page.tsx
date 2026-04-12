@@ -27,7 +27,9 @@ import { motion, AnimatePresence } from "framer-motion";
 interface Category {
   _id: string;
   name: string;
+  slug: string;
   icon?: string;
+  subcategories: string[];
 }
 
 export default function AddProductPage() {
@@ -236,7 +238,7 @@ export default function AddProductPage() {
                       {categories.map((cat) => (
                         <button
                           key={cat._id}
-                          onClick={() => setFormData(prev => ({ ...prev, categoryName: cat.name }))}
+                          onClick={() => setFormData(prev => ({ ...prev, categoryName: cat.name, subcategory: "" }))}
                           className={`relative p-6 rounded-3xl border transition-all flex flex-col items-center gap-4 group ${
                             formData.categoryName === cat.name 
                               ? "bg-violet-600 border-violet-500 text-white shadow-2xl shadow-violet-600/20 scale-[1.02]" 
@@ -261,22 +263,50 @@ export default function AddProductPage() {
                   </div>
 
                   <div className="pt-8 border-t border-white/5">
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-4">
                       <label className="text-sm font-semibold text-slate-300 flex items-center justify-between">
-                        <span>Subcategory <span className="text-slate-500 text-[10px] font-normal italic ml-1">(Optional)</span></span>
+                        <span>Choose Subcategory <span className="text-slate-500 text-[10px] font-normal italic ml-1">(Required for better search)</span></span>
                       </label>
-                      <div className="relative group">
-                        <Layers className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-violet-500 transition-colors" />
-                        <input 
-                          type="text" 
-                          name="subcategory"
-                          value={formData.subcategory}
-                          onChange={handleInputChange}
-                          placeholder="e.g. Smartphones, T-shirts, Spices..."
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:border-violet-500/50 focus:bg-black/60 transition-all placeholder:text-slate-600"
-                        />
-                      </div>
-                      <p className="text-[10px] text-slate-500 ml-1">You can leave this blank and add it later if needed.</p>
+                      
+                      {formData.categoryName ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {categories.find(c => c.name === formData.categoryName)?.subcategories.map(sub => (
+                            <button
+                              key={sub}
+                              onClick={() => setFormData(prev => ({ ...prev, subcategory: sub }))}
+                              className={`p-4 rounded-2xl border text-xs font-bold transition-all text-center tracking-tight ${
+                                formData.subcategory === sub 
+                                  ? "bg-violet-600/20 border-violet-500/50 text-violet-400 shadow-lg shadow-violet-500/10" 
+                                  : "bg-white/[0.03] border-white/5 text-slate-500 hover:border-white/20 hover:bg-white/5 hover:text-slate-300"
+                              }`}
+                            >
+                              {sub}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setFormData(prev => ({ ...prev, subcategory: "Other" }))}
+                            className={`p-4 rounded-2xl border text-xs font-bold transition-all text-center tracking-tight ${
+                              formData.subcategory === "Other" 
+                                ? "bg-violet-600/20 border-violet-500/50 text-violet-400 shadow-lg shadow-violet-500/10" 
+                                : "bg-white/[0.03] border-white/5 text-slate-500 hover:border-white/20 hover:bg-white/5 hover:text-slate-300"
+                            }`}
+                          >
+                            Other
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.01] gap-3">
+                          <Layers className="h-8 w-8 text-slate-700" />
+                          <p className="text-sm text-slate-600 font-medium italic">Please select a category first to see subcategories</p>
+                        </div>
+                      )}
+                      
+                      {formData.subcategory && formData.subcategory !== "Other" && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl w-fit">
+                          <Check className="h-3 w-3 text-emerald-500" />
+                          <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Selected: {formData.subcategory}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -531,7 +561,7 @@ export default function AddProductPage() {
               <button
                 onClick={nextStep}
                 disabled={
-                  (step === 1 && !formData.categoryName) ||
+                  (step === 1 && (!formData.categoryName || (categories.find(c => c.name === formData.categoryName)?.subcategories.length && !formData.subcategory))) ||
                   (step === 2 && (!formData.name || !formData.brand || !formData.shortDescription || !formData.fullDescription)) ||
                   (step === 3 && (!formData.price || !formData.stock))
                 }

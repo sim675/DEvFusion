@@ -40,6 +40,7 @@ import {
   Check,
 } from "lucide-react";
 import ProductCard from "@/components/product/ProductCard";
+import RecommendedSection from "@/components/product/RecommendedSection";
 
 type Address = { 
   _id?: string; 
@@ -553,7 +554,7 @@ export default function Home() {
                   {categories.map((category) => (
                     <Link
                       key={category.slug}
-                      href={`/category/${category.slug}`}
+                      href={`/search?category=${category.slug}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex flex-col items-center gap-2 group outline-none"
                     >
@@ -826,6 +827,9 @@ export default function Home() {
               ))}
             </motion.div>
           </div>
+
+          {/* Recommended Section */}
+          <RecommendedSection userId={user?._id || user?.id} />
 
           <section className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80 sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

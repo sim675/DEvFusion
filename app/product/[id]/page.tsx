@@ -6,6 +6,7 @@ import ImageGallery from "@/components/product/ImageGallery";
 import ProductInfo from "@/components/product/ProductInfo";
 import ProductDetails from "@/components/product/ProductDetails";
 import ReviewsSection from "@/components/product/ReviewsSection";
+import RecommendedSection from "@/components/product/RecommendedSection";
 import { Loader2, ArrowLeft, Share2, Heart, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +20,16 @@ export default function ProductDetailPage() {
   
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) { }
+    }
+  }, []);
 
   const fetchReviews = async () => {
     const rRes = await fetch(`/api/reviews/${id}`);
@@ -55,6 +66,14 @@ export default function ProductDetailPage() {
 
       // 3. Fetch Reviews
       await fetchReviews();
+
+      // 4. Record Browsing History (Non-blocking)
+      fetch("/api/user/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: id }),
+      }).catch(console.error);
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -204,7 +223,12 @@ export default function ProductDetailPage() {
 
           {/* Right: Product Info */}
           <div className="lg:col-span-5">
-            <ProductInfo product={product} seller={seller} reviewStats={reviewsData.stats} />
+            <ProductInfo 
+              product={product} 
+              seller={seller} 
+              reviewStats={reviewsData.stats} 
+              setNotification={setNotification}
+            />
           </div>
         </div>
 
@@ -230,6 +254,15 @@ export default function ProductDetailPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* You may also like */}
+        <div className="border-t border-white/5 pt-16">
+          <RecommendedSection 
+            userId={user?._id || user?.id} 
+            currentProductId={id as string} 
+            title="You may also like"
+          />
         </div>
 
         {/* Bottom Section: Reviews */}

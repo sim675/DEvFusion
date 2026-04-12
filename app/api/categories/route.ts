@@ -8,7 +8,7 @@ export async function GET() {
     const categories = await Category.find({ 
       isActive: true,
       slug: { $ne: 'auto' }
-    }).select('name slug icon description');
+    }).select('name slug icon description subcategories');
     return NextResponse.json(categories);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

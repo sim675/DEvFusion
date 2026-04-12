@@ -253,13 +253,19 @@ export default function ProductsPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Subcategory</label>
-                    <input 
-                      type="text" 
+                    <select 
                       value={editFormData.subcategory}
                       onChange={(e) => setEditFormData({...editFormData, subcategory: e.target.value})}
-                      placeholder="e.g. Wireless Headphones"
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-violet-500/50 transition-colors"
-                    />
+                    >
+                      <option value="">Select Subcategory</option>
+                      {editFormData.category && 
+                        categories.find((c: any) => c.name === editFormData.category)?.subcategories?.map((sub: string) => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))
+                      }
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
                   
                   <div className="space-y-2 md:col-span-2">

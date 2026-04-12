@@ -12,17 +12,83 @@ import Category from "@/models/Category";
  */
 
 const CATEGORIES = [
-  { name: "Fashion",     slug: "fashion",     icon: "Shirt",      description: "Clothing, footwear, and accessories from local boutiques" },
-  { name: "Mobiles",     slug: "mobiles",     icon: "Smartphone", description: "Mobile phones and accessories from nearby stores" },
-  { name: "Beauty",      slug: "beauty",      icon: "Sparkles",   description: "Skincare, makeup, and personal care products" },
-  { name: "Electronics", slug: "electronics", icon: "Monitor",    description: "Gadgets, laptops, and electronic accessories" },
-  { name: "Home",        slug: "home",        icon: "Home",       description: "Home décor, kitchen essentials, and daily utilities" },
-  { name: "Appliances",  slug: "appliances",  icon: "Tv",         description: "Kitchen and household appliances" },
-  { name: "Toys",        slug: "toys",        icon: "Gamepad2",   description: "Toys, games, and hobby supplies for all ages" },
-  { name: "Food",        slug: "food",        icon: "Utensils",   description: "Fresh and packaged food from local vendors" },
-  { name: "Sports",      slug: "sports",      icon: "Bike",       description: "Sports gear, fitness equipment, and outdoor supplies" },
-  { name: "Books",       slug: "books",       icon: "Book",       description: "Books, stationery, and educational material" },
-  { name: "Furniture",   slug: "furniture",   icon: "Armchair",   description: "Furniture and home furnishing from local craftsmen" },
+  { 
+    name: "Fashion",     
+    slug: "fashion",     
+    icon: "Shirt",      
+    description: "Clothing, footwear, and accessories from local boutiques",
+    subcategories: ["Men's Wear", "Women's Wear", "Kid's Wear", "Footwear", "Accessories"]
+  },
+  { 
+    name: "Mobiles",     
+    slug: "mobiles",     
+    icon: "Smartphone", 
+    description: "Mobile phones and accessories from nearby stores",
+    subcategories: ["Smartphones", "Tablets", "Accessories", "Refurbished"]
+  },
+  { 
+    name: "Beauty",      
+    slug: "beauty",      
+    icon: "Sparkles",   
+    description: "Skincare, makeup, and personal care products",
+    subcategories: ["Skincare", "Makeup", "Haircare", "Fragrance", "Personal Care"]
+  },
+  { 
+    name: "Electronics", 
+    slug: "electronics", 
+    icon: "Monitor",    
+    description: "Gadgets, laptops, and electronic accessories",
+    subcategories: ["Laptops", "Cameras", "Audio", "Gaming", "Smart Home"]
+  },
+  { 
+    name: "Home",        
+    slug: "home",        
+    icon: "Home",       
+    description: "Home décor, kitchen essentials, and daily utilities",
+    subcategories: ["Décor", "Kitchen", "Furniture", "Lighting", "Storage"]
+  },
+  { 
+    name: "Appliances",  
+    slug: "appliances",  
+    icon: "Tv",         
+    description: "Kitchen and household appliances",
+    subcategories: ["Refrigerator", "Washing Machine", "Microwave", "Air Conditioner"]
+  },
+  { 
+    name: "Toys",        
+    slug: "toys",        
+    icon: "Gamepad2",   
+    description: "Toys, games, and hobby supplies for all ages",
+    subcategories: ["Action Figures", "Puzzles", "Educational", "Soft Toys", "Outdoor"]
+  },
+  { 
+    name: "Food",        
+    slug: "food",        
+    icon: "Utensils",   
+    description: "Fresh and packaged food from local vendors",
+    subcategories: ["Snacks", "Beverages", "Groceries", "Bakery", "Organic"]
+  },
+  { 
+    name: "Sports",      
+    slug: "sports",      
+    icon: "Bike",       
+    description: "Sports gear, fitness equipment, and outdoor supplies",
+    subcategories: ["Fitness", "Outdoor", "Indoor Games", "Team Sports", "Sportswear"]
+  },
+  { 
+    name: "Books",       
+    slug: "books",       
+    icon: "Book",       
+    description: "Books, stationery, and educational material",
+    subcategories: ["Fiction", "Non-Fiction", "Academic", "Children", "Comics"]
+  },
+  { 
+    name: "Furniture",   
+    slug: "furniture",   
+    icon: "Armchair",   
+    description: "Furniture and home furnishing from local craftsmen",
+    subcategories: ["Living Room", "Bedroom", "Dining", "Office", "Outdoor"]
+  },
 ];
 
 export async function GET(req: NextRequest) {
@@ -43,7 +109,9 @@ export async function GET(req: NextRequest) {
       const existing = await Category.findOne({ slug: cat.slug });
 
       if (existing) {
-        results.push({ name: cat.name, status: "skipped (already exists)" });
+        existing.subcategories = cat.subcategories;
+        await existing.save();
+        results.push({ name: cat.name, status: "updated (subcategories added)" });
         continue;
       }
 
