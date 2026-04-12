@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { LogOut, Loader2, LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Settings, Store, User } from "lucide-react";
+import { LogOut, Loader2, LayoutDashboard, Package, Plus, ShoppingBag, DollarSign, Bell, Settings, Store, User, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import SellerProfileModal from "../components/SellerProfileModal";
@@ -63,6 +63,7 @@ export default function SellerDashboardLayout({ children }: { children: React.Re
     { name: "Products", href: "/seller/dashboard/products", icon: Package },
     { name: "Add Product", href: "/seller/add-product", icon: Plus },
     { name: "Orders", href: "/seller/dashboard/orders", icon: ShoppingBag },
+    { name: "Returns", href: "/seller/dashboard/returns", icon: RotateCcw },
     { name: "Earnings", href: "/seller/dashboard/earnings", icon: DollarSign },
     { name: "Inventory Alerts", href: "/seller/dashboard/inventory", icon: Bell },
     { name: "Store Settings", href: "/seller/dashboard/settings", icon: Settings },

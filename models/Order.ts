@@ -23,7 +23,21 @@ export interface IOrder extends Document {
   };
   paymentMethod: "COD" | "Online";
   paymentStatus: "Pending" | "Paid" | "Failed";
-  orderStatus: "Placed" | "Preparing" | "Out for Delivery" | "Delivered" | "Cancelled";
+  orderStatus: "Placed" | "Preparing" | "Out for Delivery" | "Delivered" | "Cancelled" | "Return Requested" | "Returned" | "Return Rejected";
+  returnDetails?: {
+    reason: string;
+    images: string[];
+    description?: string;
+    requestDate: Date;
+    status: "Pending" | "Approved" | "Rejected";
+    adminComment?: string;
+  };
+  refundDetails?: {
+    status: "Pending" | "Initiated" | "Completed" | "Failed";
+    transactionId?: string;
+    amount: number;
+    updatedAt: Date;
+  };
   totalAmount: number;
   deliveryFee: number;
   createdAt: Date;
@@ -59,8 +73,22 @@ const OrderSchema = new Schema<IOrder>(
     paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
     orderStatus: {
       type: String,
-      enum: ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"],
+      enum: ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled", "Return Requested", "Returned", "Return Rejected"],
       default: "Placed"
+    },
+    returnDetails: {
+      reason: { type: String },
+      images: { type: [String], default: [] },
+      description: { type: String },
+      requestDate: { type: Date },
+      status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" },
+      adminComment: { type: String },
+    },
+    refundDetails: {
+      status: { type: String, enum: ["Pending", "Initiated", "Completed", "Failed"], default: "Pending" },
+      transactionId: { type: String },
+      amount: { type: Number },
+      updatedAt: { type: Date, default: Date.now },
     },
     totalAmount: { type: Number, required: true },
     deliveryFee: { type: Number, default: 0 },

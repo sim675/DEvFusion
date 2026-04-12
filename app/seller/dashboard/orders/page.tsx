@@ -30,6 +30,10 @@ export default function OrdersPage() {
   }
 
   const handleUpdateStatus = async (orderId: string, currentStatus: string) => {
+    if (currentStatus.startsWith("Return")) {
+      alert("Cannot update status while a return is in progress. Please manage returns in the Returns section.");
+      return;
+    }
     const statusSequence = ["Placed", "Preparing", "Out for Delivery", "Delivered"];
     const currentIndex = statusSequence.indexOf(currentStatus);
     
@@ -74,6 +78,9 @@ export default function OrdersPage() {
       case 'Preparing': return 'bg-violet-500/10 text-violet-400 border-violet-500/20';
       case 'Out for Delivery': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case 'Delivered': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'Return Requested': return 'bg-violet-500/10 text-violet-400 border-violet-500/20';
+      case 'Returned': return 'bg-emerald-600/10 text-emerald-500 border-emerald-600/20';
+      case 'Return Rejected': return 'bg-red-500/10 text-red-400 border-red-500/20';
       default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
     }
   };

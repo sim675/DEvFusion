@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Package, Clock, Truck, CheckCircle2, AlertCircle, ShoppingBag, Printer } from "lucide-react";
+import { Package, Clock, Truck, CheckCircle2, AlertCircle, ShoppingBag, Printer, RotateCcw, X } from "lucide-react";
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -12,23 +12,24 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchOrders() {
-      try {
-        const res = await fetch("/api/orders");
-        if (res.status === 401) {
-          router.push("/login?redirect=/orders");
-          return;
-        }
-        if (!res.ok) throw new Error("Failed to load your orders");
-        const data = await res.json();
-        setOrders(data.orders || []);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  async function fetchOrders() {
+    try {
+      const res = await fetch("/api/orders");
+      if (res.status === 401) {
+        router.push("/login?redirect=/orders");
+        return;
       }
+      if (!res.ok) throw new Error("Failed to load your orders");
+      const data = await res.json();
+      setOrders(data.orders || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchOrders();
   }, [router]);
 
@@ -41,6 +42,9 @@ export default function OrdersPage() {
       case "Out for Delivery": return "text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20";
       case "Delivered": return "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20";
       case "Cancelled": return "text-red-500 bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20";
+      case "Return Requested": return "text-violet-500 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20";
+      case "Returned": return "text-emerald-600 bg-emerald-50 dark:bg-emerald-600/10 border-emerald-200 dark:border-emerald-600/20";
+      case "Return Rejected": return "text-slate-500 bg-slate-50 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/20";
       default: return "text-slate-500 bg-slate-50 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/20";
     }
   };
@@ -53,6 +57,9 @@ export default function OrdersPage() {
       case "Out for Delivery": return <Truck className="h-4 w-4" />;
       case "Delivered": return <CheckCircle2 className="h-4 w-4" />;
       case "Cancelled": return <AlertCircle className="h-4 w-4" />;
+      case "Return Requested": return <RotateCcw className="h-4 w-4" />;
+      case "Returned": return <CheckCircle2 className="h-4 w-4" />;
+      case "Return Rejected": return <X className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -80,7 +87,6 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-20 pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-
         <div className="mb-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-blue-600 mb-2 inline-block transition-colors">
@@ -151,20 +157,33 @@ export default function OrdersPage() {
                       
                       {/* Visual Status Tracker */}
                       <div className="flex items-center gap-2">
-                        {["Placed", "Preparing", "Out for Delivery", "Delivered"].map((step, sIdx) => {
-                          const statusSequence = ["Placed", "Preparing", "Out for Delivery", "Delivered"];
-                          const currentIdx = statusSequence.indexOf(order.orderStatus);
-                          const isDone = sIdx <= currentIdx;
-                          return (
-                            <div key={sIdx} className="flex items-center">
-                              <div className={`h-2.5 w-2.5 rounded-full ${isDone ? 'bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`} />
-                              {sIdx < 3 && <div className={`h-[2px] w-6 sm:w-8 ${isDone && sIdx < currentIdx ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-800'}`} />}
-                            </div>
-                          );
-                        })}
-                        <span className="ml-2 text-[10px] font-black uppercase text-blue-600 tracking-tighter">
-                          Live Tracking
-                        </span>
+                        {order.orderStatus === "Cancelled" ? (
+                           <span className="text-xs font-bold text-red-500 uppercase">Order Cancelled</span>
+                        ) : order.orderStatus.startsWith("Return") ? (
+                           <Link 
+                             href={`/orders/${order._id}/return`}
+                             className="text-[10px] font-black uppercase text-violet-600 tracking-tighter hover:underline"
+                           >
+                             View Return Status »
+                           </Link>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            {["Placed", "Preparing", "Out for Delivery", "Delivered"].map((step, sIdx) => {
+                              const statusSequence = ["Placed", "Preparing", "Out for Delivery", "Delivered"];
+                              const currentIdx = statusSequence.indexOf(order.orderStatus);
+                              const isDone = sIdx <= currentIdx;
+                              return (
+                                <div key={sIdx} className="flex items-center">
+                                  <div className={`h-2.5 w-2.5 rounded-full ${isDone ? 'bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`} />
+                                  {sIdx < 3 && <div className={`h-[2px] w-6 sm:w-8 ${isDone && sIdx < currentIdx ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-800'}`} />}
+                                </div>
+                              );
+                            })}
+                            <span className="ml-2 text-[10px] font-black uppercase text-blue-600 tracking-tighter">
+                              Live Tracking
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -190,6 +209,22 @@ export default function OrdersPage() {
                             >
                               <Printer className="h-3.5 w-3.5" /> Invoice
                             </button>
+                            {order.orderStatus === "Delivered" && (
+                              <Link 
+                                href={`/orders/${order._id}/return`}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-white hover:bg-amber-600 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900 transition-all"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" /> Return
+                              </Link>
+                            )}
+                            {order.orderStatus.startsWith("Return") && (
+                              <Link 
+                                href={`/orders/${order._id}/return`}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 hover:text-white hover:bg-violet-600 px-3 py-1.5 rounded-lg border border-violet-100 dark:border-violet-900 transition-all"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" /> Track Return
+                              </Link>
+                            )}
                             <Link 
                                 href={`/product/${item.productId}#reviews`}
                                 className="text-xs font-bold text-blue-600 hover:text-white hover:bg-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900 transition-all text-center"
@@ -200,6 +235,8 @@ export default function OrdersPage() {
                         </div>
                       ))}
                     </div>
+
+
 
                     {/* Delivery Address Snippet */}
                     <div className="mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/50 text-sm">
