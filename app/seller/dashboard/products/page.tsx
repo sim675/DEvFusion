@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Plus, Search, Edit2, Trash2, Filter, Loader2, X, AlertTriangle } from "lucide-react";
+import { Package, Plus, Search, Edit2, Trash2, Filter, Loader2, X, AlertTriangle, Upload, Image as ImageIcon, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -30,7 +30,11 @@ export default function ProductsPage() {
     deliveryTime: "Same Day",
     pickupAvailable: true,
     availability: true,
-    specifications: [] as { key: string; value: string }[]
+    specifications: [] as { key: string; value: string }[],
+    images: [] as string[],
+    newImages: [] as File[],
+    newPreviews: [] as string[],
+    mainImageIndex: 0
   });
 
   async function fetchProducts() {
@@ -106,9 +110,61 @@ export default function ProductsPage() {
       deliveryTime: product.deliveryTime || "Same Day",
       pickupAvailable: product.pickupAvailable ?? true,
       availability: product.availability ?? true,
-      specifications: specsArray
+      specifications: specsArray,
+      images: product.images || [],
+      newImages: [],
+      newPreviews: [],
+      mainImageIndex: product.images?.findIndex((img: string) => img === product.mainImage) >= 0 
+        ? product.images.findIndex((img: string) => img === product.mainImage) 
+        : 0
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setEditFormData(prev => ({
+        ...prev,
+        newImages: [...prev.newImages, ...newFiles],
+        newPreviews: [...prev.newPreviews, ...newFiles.map(file => URL.createObjectURL(file))]
+      }));
+    }
+  };
+
+  const removeExistingImage = (index: number) => {
+    setEditFormData(prev => {
+      const updatedImages = prev.images.filter((_, i) => i !== index);
+      // Adjust mainImageIndex if needed
+      let newMainIdx = prev.mainImageIndex;
+      if (prev.mainImageIndex === index) newMainIdx = 0;
+      else if (prev.mainImageIndex > index) newMainIdx = prev.mainImageIndex - 1;
+      
+      return { ...prev, images: updatedImages, mainImageIndex: newMainIdx };
+    });
+  };
+
+  const removeNewImage = (index: number) => {
+    setEditFormData(prev => {
+      const updatedNewImages = prev.newImages.filter((_, i) => i !== index);
+      const updatedNewPreviews = prev.newPreviews.filter((_, i) => i !== index);
+      
+      // Adjust mainImageIndex if needed
+      // If the removed image was selected as main, reset to 0
+      const totalImages = prev.images.length + prev.newImages.length;
+      const actualIndex = prev.images.length + index;
+      
+      let newMainIdx = prev.mainImageIndex;
+      if (prev.mainImageIndex === actualIndex) newMainIdx = 0;
+      else if (prev.mainImageIndex > actualIndex) newMainIdx = prev.mainImageIndex - 1;
+
+      return { 
+        ...prev, 
+        newImages: updatedNewImages, 
+        newPreviews: updatedNewPreviews,
+        mainImageIndex: newMainIdx
+      };
+    });
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -121,24 +177,39 @@ export default function ProductsPage() {
       if (s.key && s.value) specsObj[s.key] = s.value;
     });
 
+    const formData = new FormData();
+    formData.append("name", editFormData.name);
+    formData.append("brand", editFormData.brand);
+    formData.append("shortDescription", editFormData.shortDescription);
+    formData.append("fullDescription", editFormData.fullDescription);
+    formData.append("price", editFormData.price);
+    formData.append("discountPrice", editFormData.discountPrice);
+    formData.append("mrp", editFormData.mrp);
+    formData.append("stock", editFormData.stock);
+    formData.append("category", editFormData.category);
+    formData.append("subcategory", editFormData.subcategory);
+    formData.append("deliveryTime", editFormData.deliveryTime);
+    formData.append("pickupAvailable", editFormData.pickupAvailable.toString());
+    formData.append("availability", editFormData.availability.toString());
+    formData.append("specifications", JSON.stringify(specsObj));
+    formData.append("existingImages", JSON.stringify(editFormData.images));
+    formData.append("mainImageIndex", editFormData.mainImageIndex.toString());
+
+    editFormData.newImages.forEach(img => {
+      formData.append("images", img);
+    });
+
     try {
       const res = await fetch(`/api/seller/products/${editingProduct._id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...editFormData,
-          price: parseFloat(editFormData.price),
-          stock: parseInt(editFormData.stock),
-          discountPrice: editFormData.discountPrice ? parseFloat(editFormData.discountPrice) : undefined,
-          mrp: editFormData.mrp ? parseFloat(editFormData.mrp) : undefined,
-          specifications: specsObj
-        }),
+        body: formData,
       });
       if (res.ok) {
         await fetchProducts(); // Refresh list
         setIsEditModalOpen(false);
       } else {
-        alert("Failed to update product");
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to update product");
       }
     } catch (err) {
       console.error("Update error:", err);
@@ -218,6 +289,78 @@ export default function ProductsPage() {
               </div>
               <form onSubmit={handleUpdate} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Image Section */}
+                  <div className="md:col-span-2 space-y-4">
+                    <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-violet-400" /> Product Images
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {/* Existing Images */}
+                      {editFormData.images.map((img, idx) => (
+                        <div key={`existing-${idx}`} className={`group relative aspect-square rounded-2xl border overflow-hidden bg-black transition-all ${
+                          editFormData.mainImageIndex === idx ? "border-violet-500 ring-2 ring-violet-500/50" : "border-white/10"
+                        }`}>
+                          <img src={img} alt="Product" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => setEditFormData(prev => ({ ...prev, mainImageIndex: idx }))}
+                              className={`p-1.5 rounded-lg transition-colors ${editFormData.mainImageIndex === idx ? "bg-violet-600 text-white" : "bg-white/10 text-white hover:bg-violet-500"}`}
+                              title="Set as Main Image"
+                            >
+                              <Star className="h-4 w-4" fill={editFormData.mainImageIndex === idx ? "currentColor" : "none"} />
+                            </button>
+                            <button type="button" onClick={() => removeExistingImage(idx)} className="p-1.5 bg-red-500 rounded-lg text-white hover:bg-red-600">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                          {editFormData.mainImageIndex === idx && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-violet-600 text-[10px] font-bold text-center py-1 uppercase tracking-tighter">
+                              Main Image
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* New Image Previews */}
+                      {editFormData.newPreviews.map((preview, idx) => {
+                        const actualIdx = editFormData.images.length + idx;
+                        return (
+                          <div key={`new-${idx}`} className={`group relative aspect-square rounded-2xl border overflow-hidden bg-black transition-all ${
+                            editFormData.mainImageIndex === actualIdx ? "border-violet-500 ring-2 ring-violet-500/50" : "border-white/10"
+                          }`}>
+                            <img src={preview} alt="New Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                              <button 
+                                type="button"
+                                onClick={() => setEditFormData(prev => ({ ...prev, mainImageIndex: actualIdx }))}
+                                className={`p-1.5 rounded-lg transition-colors ${editFormData.mainImageIndex === actualIdx ? "bg-violet-600 text-white" : "bg-white/10 text-white hover:bg-violet-500"}`}
+                                title="Set as Main Image"
+                              >
+                                <Star className="h-4 w-4" fill={editFormData.mainImageIndex === actualIdx ? "currentColor" : "none"} />
+                              </button>
+                              <button type="button" onClick={() => removeNewImage(idx)} className="p-1.5 bg-red-500 rounded-lg text-white hover:bg-red-600">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {editFormData.mainImageIndex === actualIdx && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-violet-600 text-[10px] font-bold text-center py-1 uppercase tracking-tighter">
+                                Main Image
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Upload Button */}
+                      <label className="aspect-square rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer hover:border-violet-500/50 hover:bg-white/5 transition-all">
+                        <Upload className="h-6 w-6 text-slate-500 mb-2" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Add More</span>
+                        <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+
                   {/* Basic Info */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Product Name</label>

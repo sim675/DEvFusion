@@ -41,6 +41,7 @@ export interface IProduct extends Document {
   numReviews: number;
   tags: string[];
   keywords: string[];
+  orderCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -176,6 +177,11 @@ const ProductSchema = new Schema<IProduct>(
     keywords: {
       type: [String],
       default: [],
+      index: true,
+    },
+    orderCount: {
+      type: Number,
+      default: 0,
       index: true,
     },
   },
