@@ -35,7 +35,8 @@ export default function OrdersPage() {
   // Helpers
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Pending": return "text-amber-500 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20";
+      case "Pending":
+      case "Placed": return "text-amber-500 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20";
       case "Preparing": return "text-blue-500 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20";
       case "Out for Delivery": return "text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20";
       case "Delivered": return "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20";
@@ -46,7 +47,8 @@ export default function OrdersPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Pending": return <Clock className="h-4 w-4" />;
+      case "Pending":
+      case "Placed": return <Clock className="h-4 w-4" />;
       case "Preparing": return <Package className="h-4 w-4" />;
       case "Out for Delivery": return <Truck className="h-4 w-4" />;
       case "Delivered": return <CheckCircle2 className="h-4 w-4" />;

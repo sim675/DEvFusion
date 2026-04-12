@@ -1,33 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import Cart from "@/models/Cart";
 import Address from "@/models/Address";
 import Razorpay from "razorpay";
+import { getUserFromAuth } from "@/lib/auth";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_dummy",
   key_secret: process.env.RAZORPAY_KEY_SECRET || "dummy",
 });
 
-async function getUserFromAuth(req: NextRequest) {
-  const token = req.cookies.get("auth_token")?.value;
-  if (!token) return null;
-  try {
-    const secret = process.env.JWT_SECRET || "fallback_development_secret_key";
-    const decoded: any = jwt.verify(token, secret);
-    return decoded.id;
-  } catch (error) {
-    return null;
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const userId = await getUserFromAuth(req);
-    if (!userId) {
+    const user = await getUserFromAuth(req);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized. Please login to checkout." }, { status: 401 });
     }
+    const userId = user.id;
 
     await dbConnect();
     const body = await req.json();

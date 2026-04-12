@@ -1,30 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import Cart from "@/models/Cart";
 import Product from "@/models/Product";
 import Address from "@/models/Address";
 import Order from "@/models/Order";
-
-// Helper for auth validation
-async function getUserFromAuth(req: NextRequest) {
-  const token = req.cookies.get("auth_token")?.value;
-  if (!token) return null;
-  try {
-    const secret = process.env.JWT_SECRET || "fallback_development_secret_key";
-    const decoded: any = jwt.verify(token, secret);
-    return decoded.id;
-  } catch (error) {
-    return null;
-  }
-}
+import { getUserFromAuth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = await getUserFromAuth(req);
-    if (!userId) {
+    const user = await getUserFromAuth(req);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized. Please login to checkout." }, { status: 401 });
     }
+    const userId = user.id;
 
     await dbConnect();
     const body = await req.json();
@@ -64,8 +52,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Insufficient stock for ${productInfo.name}. Available: ${productInfo.stock}` }, { status: 400 });
       }
 
-      // Deduct stock
-      await Product.updateOne({ _id: productInfo._id }, { $inc: { stock: -item.quantity } });
+      // Deduct stock atomically and ensure it doesn't go below 0
+      const updatedProduct = await Product.findByIdAndUpdate(
+        productInfo._id,
+        { $inc: { stock: -item.quantity } },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedProduct) {
+        return NextResponse.json({ error: "Failed to update stock for " + productInfo.name }, { status: 500 });
+      }
 
       subtotal += (item.price * item.quantity);
 
@@ -98,6 +94,7 @@ export async function POST(req: NextRequest) {
       },
       paymentMethod,
       paymentStatus: paymentMethod === "COD" ? "Pending" : "Paid",
+      orderStatus: "Placed", // Explicitly set to Placed
       totalAmount,
       deliveryFee
     });

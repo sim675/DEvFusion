@@ -23,7 +23,7 @@ export interface IOrder extends Document {
   };
   paymentMethod: "COD" | "Online";
   paymentStatus: "Pending" | "Paid" | "Failed";
-  orderStatus: "Pending" | "Preparing" | "Out for Delivery" | "Delivered" | "Cancelled";
+  orderStatus: "Placed" | "Preparing" | "Out for Delivery" | "Delivered" | "Cancelled";
   totalAmount: number;
   deliveryFee: number;
   createdAt: Date;
@@ -59,8 +59,8 @@ const OrderSchema = new Schema<IOrder>(
     paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
     orderStatus: {
       type: String,
-      enum: ["Pending", "Preparing", "Placed", "Out for Delivery", "Delivered", "Cancelled"],
-      default: "Pending"
+      enum: ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"],
+      default: "Placed"
     },
     totalAmount: { type: Number, required: true },
     deliveryFee: { type: Number, default: 0 },

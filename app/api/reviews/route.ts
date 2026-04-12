@@ -1,24 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import Review from "@/models/Review";
 import Product from "@/models/Product";
 import User from "@/models/User";
+import Seller from "@/models/Seller";
 import mongoose from "mongoose";
+import { getUserFromAuth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get("auth_token")?.value;
-    if (!token) {
+    const authUser = await getUserFromAuth(req);
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized. Please login to review." }, { status: 401 });
-    }
-
-    const secret = process.env.JWT_SECRET || "fallback_development_secret_key";
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, secret);
-    } catch (err) {
-      return NextResponse.json({ error: "Invalid session. Please login again." }, { status: 401 });
     }
 
     await dbConnect();
@@ -39,14 +32,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Product not found." }, { status: 404 });
     }
 
-    // Get user name
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return NextResponse.json({ error: "User not found." }, { status: 404 });
+    // Get user name (Check both models)
+    let userName = "Anonymous";
+    if (authUser.role === 'seller') {
+      const seller = await Seller.findById(authUser.id);
+      if (seller) userName = seller.fullName || seller.storeName || "Seller";
+    } else {
+      const user = await User.findById(authUser.id);
+      if (user) userName = user.name || "Buyer";
     }
 
     // Check if user already reviewed
-    const existingReview = await Review.findOne({ productId, userId: decoded.id });
+    const existingReview = await Review.findOne({ productId, userId: authUser.id });
     if (existingReview) {
       return NextResponse.json({ error: "You have already reviewed this product." }, { status: 400 });
     }
@@ -54,8 +51,8 @@ export async function POST(req: NextRequest) {
     // Create review
     const newReview = await Review.create({
       productId,
-      userId: decoded.id,
-      userName: user.name,
+      userId: authUser.id,
+      userName: userName,
       rating,
       comment
     });

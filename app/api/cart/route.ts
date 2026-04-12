@@ -1,28 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import Cart from "@/models/Cart";
-
-// Helper for auth validation
-async function getUserFromAuth(req: NextRequest) {
-  const token = req.cookies.get("auth_token")?.value;
-  if (!token) return null;
-
-  try {
-    const secret = process.env.JWT_SECRET || "fallback_development_secret_key";
-    const decoded: any = jwt.verify(token, secret);
-    return decoded.id;
-  } catch (error) {
-    return null;
-  }
-}
+import { getUserFromAuth } from "@/lib/auth";
 
 // GET: Fetch the user's active cart
 export async function GET(req: NextRequest) {
   try {
-    const userId = await getUserFromAuth(req);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getUserFromAuth(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const userId = user.id;
     await dbConnect();
 
     const cart = await Cart.findOne({ userId, status: "active" }).populate("items.productId", "name brand stock");
@@ -40,8 +27,9 @@ export async function GET(req: NextRequest) {
 // POST: Add an item to the cart or handle quantity updates
 export async function POST(req: NextRequest) {
   try {
-    const userId = await getUserFromAuth(req);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getUserFromAuth(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = user.id;
 
     await dbConnect();
 
