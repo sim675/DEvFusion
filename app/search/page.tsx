@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { reRankProducts } from "@/utils/fuzzyQueryCorrector";
 import {
   Search,
   MapPin,
@@ -290,6 +291,16 @@ function SearchPageInner() {
     fetchCats();
   }, []);
 
+  // ── Log search to self-learning engine (fire-and-forget) ──────────────────
+  const logSearch = (q: string, resultCount: number) => {
+    if (!q) return;
+    fetch("/api/search/learn", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ originalQuery: q, correctedQuery: q, resultCount }),
+    }).catch(() => {}); // never let logging break the UI
+  };
+
   // ── Fetch results ─────────────────────────────────────────────────────────
   const fetchResults = useCallback(
     async (q: string, pg: number) => {
@@ -318,11 +329,13 @@ function SearchPageInner() {
           setError(data.error || "Search failed. Please try again.");
           setResults([]);
         } else {
-          setResults(data.results);
+          setResults(reRankProducts(data.results, q)); // re-rank by relevance
           setTotal(data.total);
           setTotalPages(data.totalPages);
           setLocationUsed(data.locationUsed ?? false);
           setOutOfRange(data.outOfRange ?? false);
+          // Log to self-learning engine
+          logSearch(q, data.total);
         }
       } catch {
         setError("Network error. Please check your connection.");
